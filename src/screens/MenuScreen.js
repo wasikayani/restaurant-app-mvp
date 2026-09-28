@@ -1,5 +1,6 @@
 // src/screens/MenuScreen.js
 // Question 4 – Menu Browsing Screen (hooks: useState, useEffect)
+// Question 5 – Search and Scroll Controls (hook: useRef)
 //
 // What each hook does here:
 //  useState  -> menuItems, isLoading, error, selectedCategory, filteredItems,
@@ -8,14 +9,22 @@
 //               (2) re-filter when category or menu changes      [selectedCategory, menuItems]
 //               (3) update the header title with the item count  [filteredItems, isLoading]
 //               (4) auto-hide the "added" toast after 2 seconds  [toast]
+//               (5) clear the search debounce timer on unmount   [ ]
+//  useRef    -> searchInputRef   : the TextInput element (to call .focus())
+//               listRef          : the FlatList element (to call .scrollToOffset())
+//               debounceTimerRef : id of the pending search timeout
+//               previousQueryRef : last saved search term (avoid duplicates)
+//               renderCount      : how many times this screen has rendered
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   Image,
   FlatList,
   ScrollView,
+  TextInput,
+  Keyboard,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
@@ -30,6 +39,9 @@ import { categories, fetchMenu } from '../data/menu';
 import { lightColors as colors, radius, spacing } from '../theme/colors';
 
 const formatPrice = (value) => `Rs ${value.toLocaleString('en-PK')}`;
+const SEARCH_DELAY = 400; // ms of "no typing" before the search is applied
+const MAX_RECENT = 5; // how many recent searches to remember
+const BACK_TO_TOP_OFFSET = 300; // px scrolled before the "Back to top" button appears
 
 export default function MenuScreen({ route, navigation }) {
   const user = route.params?.user;
@@ -42,6 +54,32 @@ export default function MenuScreen({ route, navigation }) {
   const [filteredItems, setFilteredItems] = useState([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toast, setToast] = useState(null); // text of the "added" message
+
+  // ---------------- Q5 state ----------------
+  const [searchText, setSearchText] = useState(''); // what the user typed (every keystroke)
+  const [searchQuery, setSearchQuery] = useState(''); // debounced value actually used to filter
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [recentSearches, setRecentSearches] = useState([]); // last 5 search terms
+  const [showBackToTop, setShowBackToTop] = useState(false);
+
+  // ---------------- Q5 refs ----------------
+  const searchInputRef = useRef(null);
+  const listRef = useRef(null);
+  const debounceTimerRef = useRef(null);
+  const previousQueryRef = useRef('');
+
+  // Render counter.
+  // WHY a ref does not re-render but state does:
+  //  - useRef returns the SAME mutable object { current } on every render.
+  //    Changing ref.current just changes a value in memory; React is not told
+  //    about it, so no new render is scheduled. That is why we can safely do
+  //    `renderCount.current += 1` during render without an infinite loop.
+  //  - Calling a state setter (e.g. setSearchText) tells React "data changed",
+  //    so React re-renders the component to show the new value on screen.
+  //  If we used useState for the counter, updating it during render would
+  //  trigger another render, which updates it again... forever.
+  const renderCount = useRef(0);
+  renderCount.current += 1;
 
   // Starts a fake request and returns its cancel function
   const loadMenu = () => {
@@ -70,16 +108,22 @@ export default function MenuScreen({ route, navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------------- Effect 2: filter by category ----------------
-  // Runs whenever selectedCategory OR menuItems changes.
+  // ---------------- Effect 2: filter by category + search ----------------
+  // Runs whenever selectedCategory, menuItems OR the debounced searchQuery changes.
   // (In Q8 this state + effect is replaced by a single useMemo.)
   useEffect(() => {
-    if (selectedCategory === 'All') {
-      setFilteredItems(menuItems);
-    } else {
-      setFilteredItems(menuItems.filter((item) => item.category === selectedCategory));
-    }
-  }, [selectedCategory, menuItems]);
+    const q = searchQuery.trim().toLowerCase();
+    setFilteredItems(
+      menuItems.filter((item) => {
+        const inCategory = selectedCategory === 'All' || item.category === selectedCategory;
+        const matchesSearch =
+          q === '' ||
+          item.name.toLowerCase().includes(q) ||
+          item.description.toLowerCase().includes(q);
+        return inCategory && matchesSearch;
+      }),
+    );
+  }, [selectedCategory, menuItems, searchQuery]);
 
   // ---------------- Effect 3: header title with item count ----------------
   useEffect(() => {
@@ -94,6 +138,66 @@ export default function MenuScreen({ route, navigation }) {
     const timer = setTimeout(() => setToast(null), 2000);
     return () => clearTimeout(timer); // cleanup if a new toast replaces it
   }, [toast]);
+
+  // ---------------- Effect 5: clear debounce timer on unmount ----------------
+  // If the user leaves the screen while a search is pending, cancel it.
+  useEffect(() => {
+    return () => clearTimeout(debounceTimerRef.current);
+  }, []);
+
+  // ---------------- Q5 handlers: search ----------------
+  // Applies a search term and saves it in "recent searches"
+  const applySearch = (term) => {
+    setSearchQuery(term);
+    const clean = term.trim();
+    if (clean.length < 2) return; // ignore empty / 1-letter searches
+    // previousQueryRef stops the SAME term being added twice in a row
+    if (clean.toLowerCase() === previousQueryRef.current.toLowerCase()) return;
+    previousQueryRef.current = clean;
+    setRecentSearches((prev) =>
+      [clean, ...prev.filter((t) => t.toLowerCase() !== clean.toLowerCase())].slice(0, MAX_RECENT),
+    );
+  };
+
+  // Manual debounce: every keystroke cancels the previous timer and starts a
+  // new one. The search only runs when the user stops typing for 400 ms.
+  const onChangeSearch = (text) => {
+    setSearchText(text);
+    clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => applySearch(text), SEARCH_DELAY);
+  };
+
+  const submitSearch = () => {
+    clearTimeout(debounceTimerRef.current);
+    applySearch(searchText);
+  };
+
+  // Tapping the search icon focuses the input through its ref
+  const focusSearch = () => searchInputRef.current?.focus();
+
+  // Clear button: empty the text AND keep the keyboard open (focus stays)
+  const clearSearch = () => {
+    clearTimeout(debounceTimerRef.current);
+    setSearchText('');
+    setSearchQuery('');
+    searchInputRef.current?.focus();
+  };
+
+  const selectRecent = (term) => {
+    clearTimeout(debounceTimerRef.current);
+    setSearchText(term);
+    applySearch(term);
+    Keyboard.dismiss();
+  };
+
+  // ---------------- Q5 handlers: scroll ----------------
+  // Only update state when crossing the 300px line, not on every pixel
+  const onScroll = (event) => {
+    const shouldShow = event.nativeEvent.contentOffset.y > BACK_TO_TOP_OFFSET;
+    if (shouldShow !== showBackToTop) setShowBackToTop(shouldShow);
+  };
+
+  const scrollToTop = () => listRef.current?.scrollToOffset({ offset: 0, animated: true });
 
   // ---------------- Handlers ----------------
   const selectCategory = (id) => {
@@ -261,10 +365,68 @@ export default function MenuScreen({ route, navigation }) {
     );
   }
 
+  // ---------------- Search bar (fixed above the list) ----------------
+  const showRecent = isSearchFocused && searchText === '' && recentSearches.length > 0;
+  const SearchBar = (
+    <View style={styles.searchArea}>
+      <View style={[styles.searchBar, isSearchFocused && styles.searchBarFocused]}>
+        <TouchableOpacity onPress={focusSearch} hitSlop={10} accessibilityLabel="Focus search">
+          <Ionicons name="search" size={20} color={colors.primary} />
+        </TouchableOpacity>
+        <TextInput
+          ref={searchInputRef}
+          value={searchText}
+          onChangeText={onChangeSearch}
+          onSubmitEditing={submitSearch}
+          onFocus={() => setIsSearchFocused(true)}
+          onBlur={() => setIsSearchFocused(false)}
+          placeholder="Search burgers, pizza, shakes…"
+          placeholderTextColor={colors.textMuted}
+          returnKeyType="search"
+          autoCorrect={false}
+          autoCapitalize="none"
+          style={styles.searchInput}
+        />
+        {searchText.length > 0 && (
+          <TouchableOpacity onPress={clearSearch} hitSlop={10} accessibilityLabel="Clear search">
+            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Debug label required by Q5 – shows the useRef render counter */}
+      <Text style={styles.debugLabel}>Debug · renders: {renderCount.current}</Text>
+
+      {/* Recent searches – visible when the input is focused and empty */}
+      {showRecent && (
+        <View style={styles.recentPanel}>
+          <Text style={styles.recentTitle}>Recent searches</Text>
+          {recentSearches.map((term) => (
+            <TouchableOpacity
+              key={term}
+              style={styles.recentRow}
+              onPress={() => selectRecent(term)}
+            >
+              <Ionicons name="time-outline" size={18} color={colors.textMuted} />
+              <Text style={styles.recentText}>{term}</Text>
+              <Ionicons
+                name="arrow-up-outline"
+                size={16}
+                color={colors.textMuted}
+                style={styles.recentArrow}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+
   // ---------------- Main screen ----------------
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
+      {SearchBar}
 
       {isLoading ? (
         <View>
@@ -277,6 +439,11 @@ export default function MenuScreen({ route, navigation }) {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           data={filteredItems}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
@@ -292,9 +459,38 @@ export default function MenuScreen({ route, navigation }) {
             />
           }
           ListEmptyComponent={
-            <Text style={styles.empty}>No dishes in this category right now.</Text>
+            searchQuery.trim() ? (
+              <View style={styles.emptyWrap}>
+                <View style={styles.emptyIcon}>
+                  <Ionicons name="search-outline" size={34} color={colors.primary} />
+                </View>
+                <Text style={styles.emptyTitle}>No dishes found</Text>
+                <Text style={styles.emptyText}>
+                  Nothing matches “{searchQuery.trim()}”
+                  {selectedCategory !== 'All' ? ` in ${selectedCategory}` : ''}. Try another word.
+                </Text>
+                <TouchableOpacity style={styles.emptyButton} onPress={clearSearch}>
+                  <Text style={styles.emptyButtonText}>Clear search</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={styles.empty}>No dishes in this category right now.</Text>
+            )
           }
         />
+      )}
+
+      {/* Floating "Back to top" button (visible after scrolling 300px) */}
+      {showBackToTop && !isLoading && (
+        <TouchableOpacity
+          style={[styles.backToTop, toast && styles.backToTopRaised]}
+          onPress={scrollToTop}
+          activeOpacity={0.85}
+          accessibilityLabel="Back to top"
+        >
+          <Ionicons name="arrow-up" size={18} color={colors.white} />
+          <Text style={styles.backToTopText}>Top</Text>
+        </TouchableOpacity>
       )}
 
       {/* "Added" toast */}
@@ -493,6 +689,117 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   retryText: { color: colors.white, fontWeight: '800', fontSize: 15 },
+
+  // Search (Q5)
+  searchArea: {
+    paddingHorizontal: spacing.md,
+    paddingTop: 12,
+    paddingBottom: 6,
+    backgroundColor: colors.background,
+    zIndex: 10,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.card,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    height: 50,
+    shadowColor: '#1C2A24',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  searchBarFocused: { borderColor: colors.primary },
+  searchInput: { flex: 1, fontSize: 15, color: colors.text },
+  debugLabel: {
+    alignSelf: 'flex-end',
+    marginTop: 4,
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textMuted,
+    backgroundColor: '#EFE9DC',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    overflow: 'hidden',
+  },
+  recentPanel: {
+    position: 'absolute',
+    top: 66,
+    left: spacing.md,
+    right: spacing.md,
+    backgroundColor: colors.card,
+    borderRadius: radius.lg,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  recentTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  recentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+  },
+  recentText: { flex: 1, fontSize: 15, color: colors.text, fontWeight: '600' },
+  recentArrow: { transform: [{ rotate: '-45deg' }] },
+  emptyWrap: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: 30 },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 20 },
+  emptyButton: {
+    marginTop: 16,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: radius.pill,
+  },
+  emptyButtonText: { color: colors.primary, fontWeight: '800' },
+  backToTop: {
+    position: 'absolute',
+    right: spacing.md,
+    bottom: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: radius.pill,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  backToTopRaised: { bottom: 92 },
+  backToTopText: { color: colors.white, fontWeight: '800' },
 
   // Toast
   toast: {
