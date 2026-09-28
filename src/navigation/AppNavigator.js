@@ -12,11 +12,21 @@ import { lightColors as colors } from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
 
-// Header avatar (glass circle with initials) -> opens the account menu with Log out.
+// Header avatar (dark-green circle with initials) -> opens the account menu with Log out.
 // (Proper logout with AuthContext comes in Q6.)
-const accountButton = (navigation, route) => () => (
+const avatarElement = (navigation, route) => (
   <HeaderAvatar user={route.params?.user} onLogout={() => navigation.replace('Login')} />
 );
+
+// On iOS 26+ the system wraps header buttons in a light "glass" bubble.
+// headerRightItems with hidesSharedBackground: true removes that bubble,
+// so our avatar looks exactly as designed. headerRight is used on Android.
+const avatarOptions = (navigation, route) => ({
+  headerRight: () => avatarElement(navigation, route),
+  unstable_headerRightItems: () => [
+    { type: 'custom', element: avatarElement(navigation, route), hidesSharedBackground: true },
+  ],
+});
 
 export default function AppNavigator() {
   return (
@@ -38,7 +48,7 @@ export default function AppNavigator() {
           options={({ navigation, route }) => ({
             title: 'Menu',
             headerBackVisible: false,
-            headerRight: accountButton(navigation, route),
+            ...avatarOptions(navigation, route),
           })}
         />
         <Stack.Screen
@@ -47,7 +57,7 @@ export default function AppNavigator() {
           options={({ navigation, route }) => ({
             title: 'Dashboard',
             headerBackVisible: false,
-            headerRight: accountButton(navigation, route),
+            ...avatarOptions(navigation, route),
           })}
         />
       </Stack.Navigator>
