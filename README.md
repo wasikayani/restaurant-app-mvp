@@ -63,7 +63,7 @@ New accounts can also be created on the Sign Up tab. They last only while the ap
 
 ```
 restaurant-app-mvp/
-├── A1/                 SRS.pdf (Q1) and UML/ diagrams (Q2)
+├── A1/                 SRS.pdf (Q1), UML/ diagrams (Q2) and Demo/ video link
 ├── App.js              providers (Theme, Auth, Menu, Reservations, Orders) + navigator + launch/loading screen
 ├── assets/             app icon, splash icon and brand logo layers
 ├── __tests__/          Jest unit tests (cart reducer, order totals, reservation rules, orders reducer)
@@ -93,6 +93,8 @@ restaurant-app-mvp/
 | Q2 – Sequence diagram (Add to Cart → Order Tracking) | [A1/UML/3-sequence.png](A1/UML/3-sequence.png) |
 | Q2 – State Machine diagram (order status) | [A1/UML/4-state-machine.png](A1/UML/4-state-machine.png) |
 | Q2 – Component diagram | [A1/UML/5-component.png](A1/UML/5-component.png) |
+| Demo video (YouTube link) | [A1/Demo/demo-video.md](A1/Demo/demo-video.md) |
+
 
 The diagrams were written in PlantUML; the editable sources are in `A1/UML/source/`.
 
