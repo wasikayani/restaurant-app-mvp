@@ -2,7 +2,7 @@
 // Slide-up "account" sheet opened from the avatar in the header.
 // Shows who is logged in (from AuthContext), a working Dark-mode switch
 // (from ThemeContext), shortcuts, and Log out.
-// "Soon" items are switched on later: Reservations in Q9, Orders in Q10.
+// Shortcuts: My Reservations (Q9, customers) and My Orders (Q10).
 
 import {
   Modal,
@@ -27,9 +27,13 @@ export const getInitials = (name = '') =>
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('') || '?';
 
-const COMING_SOON = [{ icon: 'receipt-outline', label: 'My Orders', sub: 'Track your orders' }];
-
-export default function AccountMenu({ visible, onClose, onOpenProfile, onOpenReservations }) {
+export default function AccountMenu({
+  visible,
+  onClose,
+  onOpenProfile,
+  onOpenReservations,
+  onOpenOrders,
+}) {
   const { colors, isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const styles = createStyles(colors);
@@ -130,16 +134,24 @@ export default function AccountMenu({ visible, onClose, onOpenProfile, onOpenRes
           </TouchableOpacity>
         )}
 
-        {COMING_SOON.map((item) => (
-          <View key={item.label} style={[styles.row, styles.rowDisabled]}>
-            <Ionicons name={item.icon} size={22} color={colors.primaryText} />
+        {/* My Orders (Q10) */}
+        {onOpenOrders && (
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => {
+              onClose();
+              onOpenOrders();
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="receipt-outline" size={22} color={colors.primaryText} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.rowLabel}>{item.label}</Text>
-              <Text style={styles.rowSub}>{item.sub}</Text>
+              <Text style={styles.rowLabel}>My Orders</Text>
+              <Text style={styles.rowSub}>Track your orders live</Text>
             </View>
-            <Text style={styles.soon}>Soon</Text>
-          </View>
-        ))}
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.divider} />
 
@@ -208,18 +220,7 @@ const createStyles = (colors) =>
     },
     roleText: { fontSize: 11, fontWeight: '800', color: colors.primaryText },
     row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12 },
-    rowDisabled: { opacity: 0.55 },
     rowLabel: { fontSize: 16, fontWeight: '700', color: colors.text },
     rowSub: { fontSize: 12.5, color: colors.textMuted, marginTop: 1 },
-    soon: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: colors.textMuted,
-      backgroundColor: colors.muted,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: radius.pill,
-      overflow: 'hidden',
-    },
     divider: { height: 1, backgroundColor: colors.divider, marginVertical: 4 },
   });

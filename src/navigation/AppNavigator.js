@@ -8,6 +8,7 @@
 //        ├── MenuTab      -> Stack -> MenuScreen
 //        ├── BookTab      -> Stack -> ReservationScreen -> MyReservationsScreen (customers, Q9)
 //        ├── CartTab      -> Stack -> CartScreen -> OrderSummaryScreen (badge = items in cart)
+//        ├── OrdersTab    -> Stack -> MyOrdersScreen -> OrderTrackingScreen (Q10, badge = active orders)
 //        └── ProfileTab   -> Stack -> ProfileScreen
 //
 // The Root stack shows Login OR Main depending on `user` from AuthContext.
@@ -29,9 +30,13 @@ import CartScreen from '../screens/CartScreen';
 import OrderSummaryScreen from '../screens/OrderSummaryScreen';
 import ReservationScreen from '../screens/ReservationScreen';
 import MyReservationsScreen from '../screens/MyReservationsScreen';
+import MyOrdersScreen from '../screens/MyOrdersScreen';
+import OrderTrackingScreen from '../screens/OrderTrackingScreen';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { CartProvider, useCart } from '../context/CartContext';
+import { useOrders } from '../context/OrdersContext';
+import { isFinalStatus } from '../reducers/ordersReducer';
 import { getItemCount } from '../reducers/cartReducer';
 
 const RootStack = createNativeStackNavigator();
@@ -41,6 +46,7 @@ const DashboardStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
 const CartStack = createNativeStackNavigator();
 const BookStack = createNativeStackNavigator();
+const OrdersStack = createNativeStackNavigator();
 
 // Shared header style for every stack, built from the current theme.
 // On iOS 26+ the system wraps header buttons in a light "glass" bubble;
@@ -124,11 +130,26 @@ function BookStackScreen() {
   );
 }
 
+function OrdersStackScreen() {
+  const { colors } = useTheme();
+  return (
+    <OrdersStack.Navigator screenOptions={stackOptions(colors)}>
+      <OrdersStack.Screen name="MyOrders" component={MyOrdersScreen} options={{ title: 'My Orders' }} />
+      <OrdersStack.Screen
+        name="OrderTracking"
+        component={OrderTrackingScreen}
+        options={{ title: 'Order Tracking', headerBackTitle: 'Orders' }}
+      />
+    </OrdersStack.Navigator>
+  );
+}
+
 const TAB_ICONS = {
   DashboardTab: ['stats-chart', 'stats-chart-outline'],
   MenuTab: ['restaurant', 'restaurant-outline'],
   BookTab: ['calendar', 'calendar-outline'],
   CartTab: ['bag-handle', 'bag-handle-outline'],
+  OrdersTab: ['receipt', 'receipt-outline'],
   ProfileTab: ['person', 'person-outline'],
 };
 
@@ -138,6 +159,8 @@ function MainTabs() {
   const { state: cart } = useCart();
   const isManager = user?.role === 'manager';
   const cartCount = getItemCount(cart.items); // live badge number
+  const { orders } = useOrders();
+  const activeOrders = orders.filter((o) => o.userId === user?.id && !isFinalStatus(o.status)).length;
 
   return (
     <Tab.Navigator
@@ -179,6 +202,15 @@ function MainTabs() {
             color: colors.white,
             fontWeight: '800',
           },
+        }}
+      />
+      <Tab.Screen
+        name="OrdersTab"
+        component={OrdersStackScreen}
+        options={{
+          title: 'Orders',
+          tabBarBadge: activeOrders > 0 ? activeOrders : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.primary, color: colors.white, fontWeight: '800' },
         }}
       />
       <Tab.Screen name="ProfileTab" component={ProfileStackScreen} options={{ title: 'Profile' }} />

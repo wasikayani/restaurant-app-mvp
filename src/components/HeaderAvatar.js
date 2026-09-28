@@ -38,6 +38,7 @@ export default function HeaderAvatar() {
             ? undefined
             : () => navigation.navigate('BookTab', { screen: 'MyReservations' })
         }
+        onOpenOrders={() => navigation.navigate('OrdersTab', { screen: 'MyOrders' })}
       />
     </>
   );

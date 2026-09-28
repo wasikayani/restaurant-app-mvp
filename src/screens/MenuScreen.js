@@ -45,6 +45,7 @@ import { categories, fetchMenu } from '../data/menu';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useMenu } from '../context/MenuContext';
 import { CART_ACTIONS } from '../reducers/cartReducer';
 import { radius, spacing } from '../theme/colors';
 
@@ -64,6 +65,7 @@ export default function MenuScreen({ navigation }) {
   const styles = createStyles(colors);
   const { user } = useAuth(); // Q6: logged-in user comes from AuthContext
   const { state: cart, dispatch } = useCart(); // Q7: shared cart (useReducer)
+  const { menu: sharedMenu } = useMenu(); // Q10: menu the manager can edit
 
   // ---------------- State ----------------
   const [menuItems, setMenuItems] = useState([]);
@@ -106,11 +108,18 @@ export default function MenuScreen({ navigation }) {
   const renderCount = useRef(0);
   renderCount.current += 1;
 
+  // Q10: always "fetch" the latest shared menu (a ref avoids a stale value
+  // inside the load effect, which only runs once).
+  const latestMenuRef = useRef(sharedMenu);
+  useEffect(() => {
+    latestMenuRef.current = sharedMenu;
+  }, [sharedMenu]);
+
   // Starts a fake request and returns its cancel function
   const loadMenu = () => {
     setIsLoading(true);
     setError(null);
-    const request = fetchMenu();
+    const request = fetchMenu(latestMenuRef.current);
     request.promise
       .then((items) => {
         setMenuItems(items);
@@ -233,6 +242,14 @@ export default function MenuScreen({ navigation }) {
   const scrollToTop = () => listRef.current?.scrollToOffset({ offset: 0, animated: true });
 
   // ---------------- Handlers ----------------
+  // ---------------- Q10: live manager edits ----------------
+  // When the manager adds a dish, changes a price or toggles availability,
+  // the shared menu changes and the loaded list is updated immediately.
+  // (Skipped while the first load is still running or has failed.)
+  useEffect(() => {
+    setMenuItems((prev) => (prev.length === 0 ? prev : sharedMenu.map((item) => ({ ...item }))));
+  }, [sharedMenu]);
+
   const selectCategory = (id) => {
     LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
     setSelectedCategory(id);
@@ -241,7 +258,7 @@ export default function MenuScreen({ navigation }) {
   // Pull to refresh: keep the current list visible while reloading
   const onRefresh = () => {
     setIsRefreshing(true);
-    fetchMenu()
+    fetchMenu(latestMenuRef.current)
       .promise.then((items) => {
         setMenuItems(items);
         setError(null);

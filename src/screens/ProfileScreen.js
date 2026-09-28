@@ -9,6 +9,10 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useOrders } from '../context/OrdersContext';
+import { useReservationContext } from '../context/ReservationContext';
+import { useMenu } from '../context/MenuContext';
+import { ORDER_ACTIONS } from '../reducers/ordersReducer';
 import { getInitials } from '../components/AccountMenu';
 import { radius, spacing } from '../theme/colors';
 
@@ -17,6 +21,29 @@ export default function ProfileScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
   const styles = createStyles(colors);
   const isManager = user?.role === 'manager';
+  const { dispatch: ordersDispatch } = useOrders();
+  const { resetReservations } = useReservationContext();
+  const { resetMenu } = useMenu();
+
+  // Q10 (manager only): go back to the original mock data. The new values are
+  // saved to AsyncStorage automatically by usePersistence.
+  const confirmReset = () =>
+    Alert.alert(
+      'Reset demo data?',
+      'All orders are deleted, reservations and the menu go back to the original data.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            ordersDispatch({ type: ORDER_ACTIONS.RESET });
+            resetReservations();
+            resetMenu();
+          },
+        },
+      ],
+    );
 
   const confirmLogout = () => {
     Alert.alert('Log out?', 'You will need to log in again to place orders.', [
@@ -94,6 +121,13 @@ export default function ProfileScreen() {
           />
         </View>
       </View>
+
+      {isManager && (
+        <TouchableOpacity style={styles.resetButton} onPress={confirmReset} activeOpacity={0.8}>
+          <Ionicons name="refresh-outline" size={20} color={colors.textMuted} />
+          <Text style={styles.resetText}>Reset demo data</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Log out */}
       <TouchableOpacity style={styles.logoutButton} onPress={confirmLogout} activeOpacity={0.8}>
@@ -174,6 +208,15 @@ const createStyles = (colors) =>
     },
     rowLabel: { fontSize: 12.5, color: colors.textMuted },
     rowValue: { fontSize: 15.5, fontWeight: '700', color: colors.text, marginTop: 1 },
+    resetButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 12,
+      marginBottom: 4,
+    },
+    resetText: { color: colors.textMuted, fontWeight: '700', fontSize: 14.5 },
     logoutButton: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -3,8 +3,8 @@
 **Developed by:** Muhammad Wasim
 **Course:** Mobile Application Development – Assignment 1 (Fall 2026)
 
-A frontend-only React Native (Expo) prototype of a restaurant app. Customers can browse the menu, search, favourite dishes, build a cart with promo codes, review an order summary and reserve a table. Managers get their own dashboard. The app opens with an animated Green Fork launch screen.
-There is no backend, no external API and no state-management library. All data is mock data held in React state and Context.
+A frontend-only React Native (Expo) prototype of a restaurant app. Customers can browse the menu, search, favourite dishes, build a cart with promo codes, place Dine-in or Takeaway orders and follow them live, and reserve a table. Managers run the restaurant from a dashboard: incoming orders, reservation approvals and menu management. The app opens with an animated Green Fork launch screen.
+There is no backend, no external API and no state-management library. All data is mock data held in React state and Context, and orders, reservations and menu edits are saved on the phone with AsyncStorage.
 
 ---
 
@@ -48,6 +48,8 @@ If the phone cannot connect, run `npx expo start --tunnel`.
 
 New accounts can also be created on the Sign Up tab. They last only while the app is open.
 
+**Reset demo data:** log in as the manager, open Profile and tap *Reset demo data* to go back to the original orders, reservations and menu.
+
 **Promo codes:** `WELCOME10` (10% off) and `FEAST20` (20% off).
 
 ---
@@ -56,21 +58,21 @@ New accounts can also be created on the Sign Up tab. They last only while the ap
 
 ```
 restaurant-app-mvp/
-├── App.js              providers (Theme, Auth, Reservations) + navigator + launch screen
+├── App.js              providers (Theme, Auth, Menu, Reservations, Orders) + navigator + launch/loading screen
 ├── assets/             app icon, splash icon and brand logo layers
-├── __tests__/          Jest unit tests (cart reducer, order totals, reservation rules)
+├── __tests__/          Jest unit tests (cart reducer, order totals, reservation rules, orders reducer)
 ├── notes/              written notes for Q4, Q6, Q7, Q8
 ├── screenshots/        screenshots used in this README
 └── src/
-    ├── components/     reusable UI (BrandSplash, FormInput, MenuItemCard, HeaderAvatar, AccountMenu, ...)
-    ├── screens/        Login, Menu, Cart, OrderSummary, Reservation, MyReservations, Profile, Dashboard
-    ├── context/        AuthContext, ThemeContext, CartContext, ReservationContext
-    ├── reducers/       cartReducer
-    ├── hooks/          custom hooks: useForm, useDebounce, useReservation (Q9)
+    ├── components/     reusable UI (BrandSplash, FormInput, MenuItemCard, OrderStatusBadge, dashboard/ panels, ...)
+    ├── screens/        Login, Menu, Cart, OrderSummary, OrderTracking, MyOrders, Reservation, MyReservations, Profile, Dashboard
+    ├── context/        AuthContext, ThemeContext, CartContext, MenuContext, ReservationContext, OrdersContext
+    ├── reducers/       cartReducer, ordersReducer
+    ├── hooks/          custom hooks: useForm, useDebounce, useReservation (Q9), usePersistence (Q10)
     ├── data/           mock data (users, menu, tables, reservations)
     ├── navigation/     bottom tabs + nested stacks
     ├── theme/          light and dark colour palettes
-    └── utils/          pure helpers (order totals, reservation rules)
+    └── utils/          pure helpers (order totals, reservation rules, AsyncStorage wrapper)
 ```
 
 ---
@@ -94,7 +96,14 @@ restaurant-app-mvp/
 | useDebounce (Q9, custom) | useState, useEffect | returns a value only after the user stops typing (cleanup clears the timer) |
 | useReservation (Q9, custom) | useForm, useMemo, useContext | available slots, free tables, validation, create and cancel reservations |
 | ReservationContext (Q9) | createContext, useState, useContext | app-wide bookings, so the manager can see them in Q10 |
-| BrandSplash | useState, useEffect | animated launch screen (logo, rings, progress bar) with cleanup |
+| OrderSummaryScreen (Q10) | useState, useEffect, useContext (useOrders, useCart) | Dine-in (table) or Takeaway (pickup time), places the order, clears the cart, opens tracking |
+| OrderTrackingScreen (Q10) | useEffect + **setInterval**, useState, useContext | Pending → Preparing (10s) → Ready (20s) → Served (30s), step progress, elapsed timer, clearInterval cleanup |
+| MyOrdersScreen (Q10) | useMemo, useContext | the customer's orders, active first |
+| DashboardScreen (Q10) | useState, useMemo, useContext | manager tabs: Orders, Bookings, Menu, with live overview numbers |
+| OrdersContext (Q10) | **useReducer**, useCallback, useContext | all orders (id, items, total, type, status, timestamp) via ordersReducer |
+| MenuContext (Q10) | useState, useCallback, useContext | one shared menu: manager edits show on the customer menu instantly |
+| usePersistence (Q10, custom) | useState, useEffect | loads state from AsyncStorage on start and saves every change |
+| BrandSplash | useState, useEffect | animated launch screen, also the loading screen until saved data is loaded |
 
 ---
 
@@ -235,7 +244,26 @@ Mock bookings are dated relative to today, so the demo always works:
 | Phone must be **03XX-XXXXXXX** | the dash is added automatically; wrong numbers show an error |
 | Cancelled bookings free the table again | covered in `__tests__/reservationRules.test.js` |
 
-Run `npm test`: 3 test suites, **29 tests**, all passing. (In PowerShell use `npm.cmd test`.)
+Reservation rules are covered by 11 tests in `__tests__/reservationRules.test.js`. (In PowerShell use `npm.cmd test`.)
+
+### Q10 – Orders, Manager Dashboard and persistence
+
+**Full flow:** customer adds dishes → Cart → Order Summary → chooses **Dine-in** (table) or **Takeaway** (pickup time) → *Place order* → the order is added to `OrdersContext` with status **Pending** → **Order Tracking** opens. The manager sees the order in **Dashboard › Orders** and can move it forward or cancel it; the customer's screen updates instantly because both use the same reducer.
+
+| Order status | When |
+|---|---|
+| Pending | as soon as the order is placed |
+| Preparing | after 10 seconds (or when the manager taps *Start preparing*) |
+| Ready | after 20 seconds (*Mark ready*) |
+| Served | after 30 seconds (*Mark served*) |
+| Cancelled | customer or manager cancels while Pending or Preparing |
+
+- The timer is a `setInterval` that ticks every second and is cleared (`clearInterval`) when the screen closes or the order is Served/Cancelled. Elapsed time comes from the order's timestamp, so it is still correct after a restart.
+- **Dashboard › Bookings:** accept or decline Pending reservations; the customer sees *Confirmed* or *Declined* in My Reservations.
+- **Dashboard › Menu:** add a dish (validated with `useForm`), edit a price, switch a dish on/off. The customer menu updates immediately (unavailable dishes show *N/A*).
+- **AsyncStorage:** orders, reservations and menu edits are saved under `@greenfork/orders`, `@greenfork/reservations` and `@greenfork/menu`. On start the launch screen stays until they are loaded.
+
+Run `npm test`: 4 test suites, **40 tests** (11 for the orders reducer), all passing.
 
 ---
 

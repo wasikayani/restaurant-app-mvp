@@ -11,6 +11,9 @@
 //   0.95s  "Green Fork" + tagline fade/slide in
 //   1.00s  progress bar fills to 100%
 //   2.40s  whole splash fades out → onFinish()
+//
+// Q10 loading screen: the fade-out waits until `isReady` is true, i.e. until
+// orders, reservations and menu edits have been loaded from AsyncStorage.
 
 import { useEffect, useState } from 'react';
 import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
@@ -22,7 +25,9 @@ const leafImage = require('../../assets/brand/logo-leaf.png');
 const LOGO = 132; // tile size
 const BAR_WIDTH = 140;
 
-export default function BrandSplash({ onFinish }) {
+export default function BrandSplash({ onFinish, isReady = true }) {
+  const [introDone, setIntroDone] = useState(false);
+
   // lazy initial state → each Animated.Value is created once
   const [anim] = useState(() => ({
     tile: new Animated.Value(0),
@@ -58,11 +63,10 @@ export default function BrandSplash({ onFinish }) {
         // the bar uses scaleX so it can run on the native driver
         Animated.timing(anim.bar, { toValue: 1, duration: 1300, delay: 1000, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       ]),
-      Animated.timing(anim.fade, { toValue: 0, duration: 380, easing: Easing.in(Easing.quad), useNativeDriver: true }),
     ]);
 
     intro.start(({ finished }) => {
-      if (finished) onFinish?.();
+      if (finished) setIntroDone(true);
     });
 
     // cleanup: stop animations if the component unmounts early
@@ -70,7 +74,22 @@ export default function BrandSplash({ onFinish }) {
       intro.stop();
       rings.stop();
     };
-  }, [anim, onFinish]);
+  }, [anim]);
+
+  // Fade out only when the intro has played AND the saved data is loaded
+  useEffect(() => {
+    if (!introDone || !isReady) return undefined;
+    const fadeOut = Animated.timing(anim.fade, {
+      toValue: 0,
+      duration: 380,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: true,
+    });
+    fadeOut.start(({ finished }) => {
+      if (finished) onFinish?.();
+    });
+    return () => fadeOut.stop();
+  }, [introDone, isReady, anim, onFinish]);
 
   const ringStyle = (value) => ({
     opacity: value.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 0.35, 0] }),
@@ -154,7 +173,9 @@ export default function BrandSplash({ onFinish }) {
             ]}
           />
         </View>
-        <Text style={styles.footerText}>Preparing your table…</Text>
+        <Text style={styles.footerText}>
+          {introDone && !isReady ? 'Loading your saved orders…' : 'Preparing your table…'}
+        </Text>
       </View>
     </Animated.View>
   );

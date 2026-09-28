@@ -261,7 +261,9 @@ export const menuItems = [
 export const FETCH_DELAY = 1500; // 1.5 seconds, as required
 export const FAILURE_RATE = 0.15; // 15% chance of a simulated network error (set to 1 to demo the error screen)
 
-export function fetchMenu() {
+// Q10: `source` is the shared, editable menu from MenuContext (manager edits).
+// It defaults to the original mock list, so older code still works.
+export function fetchMenu(source = menuItems) {
   let timerId;
   const promise = new Promise((resolve, reject) => {
     timerId = setTimeout(() => {
@@ -269,7 +271,7 @@ export function fetchMenu() {
         reject(new Error('Could not reach the kitchen. Please check your connection.'));
       } else {
         // return a copy so the original mock array is never changed by screens
-        resolve(menuItems.map((item) => ({ ...item })));
+        resolve(source.map((item) => ({ ...item })));
       }
     }, FETCH_DELAY);
   });
