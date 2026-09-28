@@ -1,5 +1,5 @@
 // src/components/HeaderAvatar.js
-// Frosted-glass circle with the user's initials, shown in the header.
+// Dark-green circle with a white border and white initials, shown in the header.
 // Tapping it opens the AccountMenu sheet (which contains Log out).
 
 import { useState } from 'react';
@@ -37,9 +37,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.18)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.55)',
+    backgroundColor: colors.primaryDark, // slightly darker green than the header
+    borderWidth: 2,
+    borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },
