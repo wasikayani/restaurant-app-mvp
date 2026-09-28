@@ -3,7 +3,7 @@
 **Developed by:** Muhammad Wasim
 **Course:** Mobile Application Development – Assignment 1 (Fall 2026)
 
-A frontend-only React Native (Expo) prototype of a restaurant app. Customers can browse the menu, search, favourite dishes, build a cart with promo codes and review an order summary. Managers get their own dashboard.
+A frontend-only React Native (Expo) prototype of a restaurant app. Customers can browse the menu, search, favourite dishes, build a cart with promo codes, review an order summary and reserve a table. Managers get their own dashboard. The app opens with an animated Green Fork launch screen.
 There is no backend, no external API and no state-management library. All data is mock data held in React state and Context.
 
 ---
@@ -56,20 +56,21 @@ New accounts can also be created on the Sign Up tab. They last only while the ap
 
 ```
 restaurant-app-mvp/
-├── App.js              providers (Theme, Auth) + navigator
-├── __tests__/          Jest unit tests (cart reducer, order totals)
+├── App.js              providers (Theme, Auth, Reservations) + navigator + launch screen
+├── assets/             app icon, splash icon and brand logo layers
+├── __tests__/          Jest unit tests (cart reducer, order totals, reservation rules)
 ├── notes/              written notes for Q4, Q6, Q7, Q8
 ├── screenshots/        screenshots used in this README
 └── src/
-    ├── components/     reusable UI (FormInput, MenuItemCard, HeaderAvatar, AccountMenu, ...)
-    ├── screens/        Login, Menu, Cart, OrderSummary, Profile, Dashboard
-    ├── context/        AuthContext, ThemeContext, CartContext
+    ├── components/     reusable UI (BrandSplash, FormInput, MenuItemCard, HeaderAvatar, AccountMenu, ...)
+    ├── screens/        Login, Menu, Cart, OrderSummary, Reservation, MyReservations, Profile, Dashboard
+    ├── context/        AuthContext, ThemeContext, CartContext, ReservationContext
     ├── reducers/       cartReducer
-    ├── hooks/          custom hooks (Q9)
-    ├── data/           mock data (users, menu)
+    ├── hooks/          custom hooks: useForm, useDebounce, useReservation (Q9)
+    ├── data/           mock data (users, menu, tables, reservations)
     ├── navigation/     bottom tabs + nested stacks
     ├── theme/          light and dark colour palettes
-    └── utils/          pure helpers (order totals)
+    └── utils/          pure helpers (order totals, reservation rules)
 ```
 
 ---
@@ -78,8 +79,8 @@ restaurant-app-mvp/
 
 | Screen / file | Hooks | Why |
 |---|---|---|
-| LoginScreen (Q3, Q6) | useState, useContext (useAuth, useTheme) | mode, form values, errors, show-password, isSubmitting, success popup; stores the user in AuthContext |
-| MenuScreen (Q4, Q5, Q8) | useState, useEffect, useRef, useMemo, useCallback, useContext | load the menu with cleanup, header count, search input and FlatList refs, manual debounce, render counter, one memoised filter/search/sort list, stable handlers |
+| LoginScreen (Q3, Q6, Q9) | useState, useContext (useAuth, useTheme), **useForm** | mode, show-password, isSubmitting, success popup; form values and errors come from the custom useForm hook; stores the user in AuthContext |
+| MenuScreen (Q4, Q5, Q8) | useState, useEffect, useRef, useMemo, useCallback, useContext | load the menu with cleanup, header count, search input and FlatList refs, search debounced with the custom **useDebounce** hook (Q9), render counter, one memoised filter/search/sort list, stable handlers |
 | MenuItemCard (Q8) | React.memo, useContext | re-renders only when its own props change |
 | MenuSkeleton | useState, useEffect | pulsing loading animation with cleanup |
 | ProfileScreen (Q6) | useContext (useAuth, useTheme) | shows the user and toggles dark mode |
@@ -87,6 +88,13 @@ restaurant-app-mvp/
 | OrderSummaryScreen (Q8) | useMemo, useContext | totals recalculated only when items or discount change |
 | AuthContext / ThemeContext (Q6) | createContext, useState, useContext | global user and theme with useAuth / useTheme hooks |
 | CartContext (Q7) | useReducer, useContext | shared cart with the useCart hook |
+| ReservationScreen (Q9) | **useReservation**, useState, useContext | UI only: date, guests, time slot, table, contact form and confirmation modal; all logic lives in the hook |
+| MyReservationsScreen (Q9) | **useReservation**, useContext | lists the customer's bookings and cancels them |
+| useForm (Q9, custom) | useState, useRef | reusable form state: values, errors, handleChange, handleSubmit, reset |
+| useDebounce (Q9, custom) | useState, useEffect | returns a value only after the user stops typing (cleanup clears the timer) |
+| useReservation (Q9, custom) | useForm, useMemo, useContext | available slots, free tables, validation, create and cancel reservations |
+| ReservationContext (Q9) | createContext, useState, useContext | app-wide bookings, so the manager can see them in Q10 |
+| BrandSplash | useState, useEffect | animated launch screen (logo, rings, progress bar) with cleanup |
 
 ---
 
@@ -129,6 +137,16 @@ restaurant-app-mvp/
 **After optimisation (React.memo + useCallback):** only the tapped card re-renders.
 
 <img src="screenshots/q8-after.jpeg" width="700" alt="Console after optimisation">
+
+### Q9 – Table reservation (custom hooks)
+
+| Booked slots disabled (Tomorrow, 6 guests) | My Reservations |
+|---|---|
+| <img src="screenshots/q9-disable-slots-highlighted.jpeg" width="240" alt="Disabled time slots"> | <img src="screenshots/q9-my-reservations.jpeg" width="240" alt="My reservations"> |
+
+### Unit tests
+
+<img src="screenshots/npm-test.jpeg" width="600" alt="npm test output">
 
 ---
 
@@ -204,6 +222,20 @@ In this app they are used only where it matters: filtering and sorting the menu 
 |---|---|
 | Before: `ENABLE_MEMO = false` (no `React.memo`, new handler functions every render) | **19** (every card) |
 | After: `React.memo` and `useCallback` | **1** (only the tapped card) |
+
+### Q9 – Reservation rules
+
+Mock bookings are dated relative to today, so the demo always works:
+
+| Rule | How it is shown |
+|---|---|
+| A slot is **Full** when every table big enough for the party is booked | Tomorrow with 5+ guests: 19:00 and 20:00 are crossed out in red |
+| Bookings must be at least **1 hour ahead** | past or too-soon slots today are greyed out as *Closed* |
+| Party size **1–12** | the guest stepper stops at the limits |
+| Phone must be **03XX-XXXXXXX** | the dash is added automatically; wrong numbers show an error |
+| Cancelled bookings free the table again | covered in `__tests__/reservationRules.test.js` |
+
+Run `npm test`: 3 test suites, **29 tests**, all passing. (In PowerShell use `npm.cmd test`.)
 
 ---
 

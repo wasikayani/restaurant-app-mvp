@@ -33,6 +33,7 @@ import {
   Keyboard,
   LayoutAnimation,
   ImageBackground,
+  Image,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
@@ -47,6 +48,10 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import useForm from '../hooks/useForm';
 import { radius, spacing } from '../theme/colors';
+
+// Brand logo layers (fork + leaf), shared with the app icon and splash
+const LOGO_FORK = require('../../assets/brand/logo-fork.png');
+const LOGO_LEAF = require('../../assets/brand/logo-leaf.png');
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80';
 
@@ -222,7 +227,9 @@ export default function LoginScreen() {
               }}
             >
               <View style={styles.logo}>
-                <Ionicons name="restaurant" size={30} color={colors.white} />
+                {/* Green Fork logo: same fork + leaf layers as the app icon and splash */}
+                <Image source={LOGO_FORK} style={styles.logoLayer} />
+                <Image source={LOGO_LEAF} style={styles.logoLayer} />
               </View>
               <Text style={styles.brand}>Green Fork</Text>
               <Text style={styles.tagline}>Order ahead. Skip the queue.</Text>
@@ -401,13 +408,13 @@ const createStyles = (colors) =>
       width: 64,
       height: 64,
       borderRadius: 32,
-      backgroundColor: colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
+      backgroundColor: '#065F46', // brand emerald, same as the app icon
+      overflow: 'hidden',
       borderWidth: 3,
       borderColor: 'rgba(255,255,255,0.35)',
       marginBottom: spacing.sm,
     },
+    logoLayer: { position: 'absolute', width: '100%', height: '100%' },
     brand: { color: colors.white, fontSize: 32, fontWeight: '800', letterSpacing: 0.5 },
     tagline: { color: '#E7F5EE', fontSize: 15, marginTop: 4 },
     card: {
