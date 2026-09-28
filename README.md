@@ -279,4 +279,8 @@ Run `npm test`: 4 test suites, **40 tests** (11 for the orders reducer), all pas
 
 ## Demo video
 
-*The link will be added after Question 10.*
+▶️ **Watch the demo (under 3 minutes):** https://youtu.be/FckzcB1fk6k
+
+[![Green Fork demo video](https://img.youtube.com/vi/FckzcB1fk6k/hqdefault.jpg)](https://youtu.be/FckzcB1fk6k)
+
+The video shows the full flow: launch screen, login and validation, menu browsing and search, cart with promo code, order summary, Dine-in order with live tracking, table reservation with full slots, dark mode, and the manager dashboard (orders, reservations, menu management), then reopening the app to show the data is saved.
