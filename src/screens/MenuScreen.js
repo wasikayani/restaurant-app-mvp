@@ -42,6 +42,7 @@ const formatPrice = (value) => `Rs ${value.toLocaleString('en-PK')}`;
 const SEARCH_DELAY = 400; // ms of "no typing" before the search is applied
 const MAX_RECENT = 5; // how many recent searches to remember
 const BACK_TO_TOP_OFFSET = 300; // px scrolled before the "Back to top" button appears
+const SHOW_DEBUG_BY_DEFAULT = false; // long-press the search icon to show/hide the render counter
 
 export default function MenuScreen({ route, navigation }) {
   const user = route.params?.user;
@@ -61,6 +62,7 @@ export default function MenuScreen({ route, navigation }) {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]); // last 5 search terms
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showDebug, setShowDebug] = useState(SHOW_DEBUG_BY_DEFAULT);
 
   // ---------------- Q5 refs ----------------
   const searchInputRef = useRef(null);
@@ -370,7 +372,12 @@ export default function MenuScreen({ route, navigation }) {
   const SearchBar = (
     <View style={styles.searchArea}>
       <View style={[styles.searchBar, isSearchFocused && styles.searchBarFocused]}>
-        <TouchableOpacity onPress={focusSearch} hitSlop={10} accessibilityLabel="Focus search">
+        <TouchableOpacity
+          onPress={focusSearch}
+          onLongPress={() => setShowDebug((v) => !v)}
+          hitSlop={10}
+          accessibilityLabel="Focus search"
+        >
           <Ionicons name="search" size={20} color={colors.primary} />
         </TouchableOpacity>
         <TextInput
@@ -395,7 +402,8 @@ export default function MenuScreen({ route, navigation }) {
       </View>
 
       {/* Debug label required by Q5 – shows the useRef render counter */}
-      <Text style={styles.debugLabel}>Debug · renders: {renderCount.current}</Text>
+      {/* Hidden by default – long-press the search icon to toggle it */}
+      {showDebug && <Text style={styles.debugLabel}>Debug · renders: {renderCount.current}</Text>}
 
       {/* Recent searches – visible when the input is focused and empty */}
       {showRecent && (
