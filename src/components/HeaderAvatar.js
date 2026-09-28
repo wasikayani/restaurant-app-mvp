@@ -33,6 +33,11 @@ export default function HeaderAvatar() {
         visible={menuOpen}
         onClose={() => setMenuOpen(false)}
         onOpenProfile={() => navigation.navigate('ProfileTab')}
+        onOpenReservations={
+          user?.role === 'manager'
+            ? undefined
+            : () => navigation.navigate('BookTab', { screen: 'MyReservations' })
+        }
       />
     </>
   );

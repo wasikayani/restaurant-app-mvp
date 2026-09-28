@@ -2,6 +2,7 @@
 // Question 4 – Menu Browsing Screen (hooks: useState, useEffect)
 // Question 5 – Search and Scroll Controls (hook: useRef)
 // Question 8 – Performance (hooks: useMemo, useCallback + React.memo on MenuItemCard)
+// Question 9 – the manual Q5 debounce is replaced by the useDebounce custom hook
 //
 // What each hook does here:
 //  useState  -> menuItems, isLoading, error, selectedCategory, sortOrder,
@@ -13,10 +14,10 @@
 //               (2) (Q4 filter effect – replaced by useMemo in Q8)
 //               (3) update the header title with the item count  [visibleItems, isLoading]
 //               (4) auto-hide the "added" toast after 2 seconds  [toast]
-//               (5) clear the search debounce timer on unmount   [ ]
+//               (5) save a recent search when the debounced text changes [debouncedSearch]
+//  useDebounce -> debouncedSearch: searchText, 400 ms after typing stops (Q9)
 //  useRef    -> searchInputRef   : the TextInput element (to call .focus())
 //               listRef          : the FlatList element (to call .scrollToOffset())
-//               debounceTimerRef : id of the pending search timeout
 //               previousQueryRef : last saved search term (avoid duplicates)
 //               renderCount      : how many times this screen has rendered
 
@@ -39,6 +40,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import MenuSkeleton from '../components/MenuSkeleton';
 import MenuItemCard, { ENABLE_MEMO } from '../components/MenuItemCard';
+import useDebounce from '../hooks/useDebounce';
 import { categories, fetchMenu } from '../data/menu';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -75,7 +77,12 @@ export default function MenuScreen({ navigation }) {
 
   // ---------------- Q5 state ----------------
   const [searchText, setSearchText] = useState(''); // what the user typed (every keystroke)
-  const [searchQuery, setSearchQuery] = useState(''); // debounced value actually used to filter
+
+  // Q9: custom hook replaces the manual useRef + setTimeout debounce from Q5.
+  // debouncedSearch only updates 400 ms after the user stops typing.
+  const debouncedSearch = useDebounce(searchText, SEARCH_DELAY);
+  // Clearing the box should empty the results immediately, not after 400 ms
+  const searchQuery = searchText.trim() === '' ? '' : debouncedSearch;
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]); // last 5 search terms
   const [showBackToTop, setShowBackToTop] = useState(false);
@@ -84,7 +91,6 @@ export default function MenuScreen({ navigation }) {
   // ---------------- Q5 refs ----------------
   const searchInputRef = useRef(null);
   const listRef = useRef(null);
-  const debounceTimerRef = useRef(null);
   const previousQueryRef = useRef('');
 
   // Render counter.
@@ -179,16 +185,9 @@ export default function MenuScreen({ navigation }) {
     return () => clearTimeout(timer); // cleanup if a new toast replaces it
   }, [toast]);
 
-  // ---------------- Effect 5: clear debounce timer on unmount ----------------
-  // If the user leaves the screen while a search is pending, cancel it.
-  useEffect(() => {
-    return () => clearTimeout(debounceTimerRef.current);
-  }, []);
-
-  // ---------------- Q5 handlers: search ----------------
-  // Applies a search term and saves it in "recent searches"
-  const applySearch = (term) => {
-    setSearchQuery(term);
+  // ---------------- Q5 handlers: search (Q9: debounced by useDebounce) ----------------
+  // Saves a search term in "recent searches" (max 5)
+  const saveRecent = (term) => {
     const clean = term.trim();
     if (clean.length < 2) return; // ignore empty / 1-letter searches
     // previousQueryRef stops the SAME term being added twice in a row
@@ -199,34 +198,28 @@ export default function MenuScreen({ navigation }) {
     );
   };
 
-  // Manual debounce: every keystroke cancels the previous timer and starts a
-  // new one. The search only runs when the user stops typing for 400 ms.
-  const onChangeSearch = (text) => {
-    setSearchText(text);
-    clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = setTimeout(() => applySearch(text), SEARCH_DELAY);
-  };
+  // Effect 5: when the debounced text settles, remember it as a recent search
+  useEffect(() => {
+    saveRecent(debouncedSearch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
 
-  const submitSearch = () => {
-    clearTimeout(debounceTimerRef.current);
-    applySearch(searchText);
-  };
+  // Every keystroke just updates the text; useDebounce handles the waiting
+  const onChangeSearch = (text) => setSearchText(text);
+
+  const submitSearch = () => saveRecent(searchText);
 
   // Tapping the search icon focuses the input through its ref
   const focusSearch = () => searchInputRef.current?.focus();
 
   // Clear button: empty the text AND keep the keyboard open (focus stays)
   const clearSearch = () => {
-    clearTimeout(debounceTimerRef.current);
     setSearchText('');
-    setSearchQuery('');
     searchInputRef.current?.focus();
   };
 
   const selectRecent = (term) => {
-    clearTimeout(debounceTimerRef.current);
     setSearchText(term);
-    applySearch(term);
     Keyboard.dismiss();
   };
 

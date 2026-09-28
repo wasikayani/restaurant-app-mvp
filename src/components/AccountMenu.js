@@ -27,12 +27,9 @@ export const getInitials = (name = '') =>
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('') || '?';
 
-const COMING_SOON = [
-  { icon: 'calendar-outline', label: 'My Reservations', sub: 'Upcoming table bookings' },
-  { icon: 'receipt-outline', label: 'My Orders', sub: 'Track your orders' },
-];
+const COMING_SOON = [{ icon: 'receipt-outline', label: 'My Orders', sub: 'Track your orders' }];
 
-export default function AccountMenu({ visible, onClose, onOpenProfile }) {
+export default function AccountMenu({ visible, onClose, onOpenProfile, onOpenReservations }) {
   const { colors, isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const styles = createStyles(colors);
@@ -113,6 +110,25 @@ export default function AccountMenu({ visible, onClose, onOpenProfile }) {
             thumbColor={colors.white}
           />
         </View>
+
+        {/* My Reservations (Q9) – customers only */}
+        {onOpenReservations && (
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => {
+              onClose();
+              onOpenReservations();
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="calendar-outline" size={22} color={colors.primaryText} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>My Reservations</Text>
+              <Text style={styles.rowSub}>Upcoming table bookings</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
 
         {COMING_SOON.map((item) => (
           <View key={item.label} style={[styles.row, styles.rowDisabled]}>

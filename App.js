@@ -4,6 +4,7 @@
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { ReservationProvider } from './src/context/ReservationContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
@@ -11,7 +12,10 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AuthProvider>
-          <AppNavigator />
+          {/* Reservations are app-wide so the manager can see customers' bookings */}
+          <ReservationProvider>
+            <AppNavigator />
+          </ReservationProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

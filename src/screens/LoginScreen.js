@@ -13,6 +13,9 @@
 // (no extra library). Animated values are created with
 // useState(() => new Animated.Value(..)) so this screen still uses ONLY useState.
 //
+// Q9 refactor: the form values, errors, field-change handler and submit/validate
+// flow now come from the reusable useForm custom hook (src/hooks/useForm.js).
+//
 // Q6 refactor: a successful login now stores the user in AuthContext
 // (login(user) from useAuth) instead of passing it through navigation params.
 // AppNavigator watches `user` and shows the right tabs automatically:
@@ -42,6 +45,7 @@ import SuccessModal, { SUCCESS_DURATION } from '../components/SuccessModal';
 import { findUser, emailExists, addUser } from '../data/users';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import useForm from '../hooks/useForm';
 import { radius, spacing } from '../theme/colors';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80';
@@ -64,8 +68,6 @@ export default function LoginScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const [mode, setMode] = useState('login');
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(null); // { title, message }
@@ -76,6 +78,29 @@ export default function LoginScreen() {
   const [hasEntered, setHasEntered] = useState(false);
 
   const isSignup = mode === 'signup';
+
+  // Returns an errors object – empty object means the form is valid.
+  // Signup mode checks extra fields (name, confirm password).
+  const validate = (form) => {
+    const e = {};
+    if (isSignup && form.fullName.trim().length < 3) {
+      e.fullName = 'Please enter your full name (at least 3 letters).';
+    }
+    if (!EMAIL_REGEX.test(form.email.trim())) {
+      e.email = 'Enter a valid email, e.g. name@example.com';
+    }
+    if (!PASSWORD_REGEX.test(form.password)) {
+      e.password = 'Password must be at least 8 characters and contain a number.';
+    }
+    if (isSignup && form.confirmPassword !== form.password) {
+      e.confirmPassword = 'Passwords do not match.';
+    }
+    return e;
+  };
+
+  // Q9: useForm gives controlled values, errors (cleared as soon as a field is
+  // edited), handleChange, handleSubmit (validate -> onValid / onInvalid) and reset.
+  const { values: form, errors, handleChange, handleSubmit, reset } = useForm(EMPTY_FORM, validate);
 
   // Slide-up + fade-in of the form card, run once when the card is first laid out.
   // (With useEffect in Q4 we could run this "on mount"; for Q3 onLayout does the job.)
@@ -104,43 +129,11 @@ export default function LoginScreen() {
   const animateNextLayout = () =>
     LayoutAnimation.configureNext(LayoutAnimation.create(250, 'easeInEaseOut', 'opacity'));
 
-  // One change handler for every field.
-  // It updates the value AND removes that field's error immediately.
-  const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => {
-        const next = { ...prev };
-        delete next[field];
-        return next;
-      });
-    }
-  };
-
   const switchMode = (newMode) => {
     animateNextLayout();
     setMode(newMode);
-    setErrors({});
-    setForm(EMPTY_FORM);
+    reset(); // back to empty fields, no errors
     setShowPassword(false);
-  };
-
-  // Returns an errors object – empty object means the form is valid
-  const validate = () => {
-    const e = {};
-    if (isSignup && form.fullName.trim().length < 3) {
-      e.fullName = 'Please enter your full name (at least 3 letters).';
-    }
-    if (!EMAIL_REGEX.test(form.email.trim())) {
-      e.email = 'Enter a valid email, e.g. name@example.com';
-    }
-    if (!PASSWORD_REGEX.test(form.password)) {
-      e.password = 'Password must be at least 8 characters and contain a number.';
-    }
-    if (isSignup && form.confirmPassword !== form.password) {
-      e.confirmPassword = 'Passwords do not match.';
-    }
-    return e;
   };
 
   const goToHome = (user) => {
@@ -158,16 +151,14 @@ export default function LoginScreen() {
     }, SUCCESS_DURATION);
   };
 
-  const handleSubmit = () => {
+  const onSubmit = () => {
     Keyboard.dismiss();
-    const validationErrors = validate();
     animateNextLayout();
-    setErrors(validationErrors);
-    if (Object.keys(validationErrors).length > 0) {
-      playShake();
-      return; // stop, show errors
-    }
+    // useForm validates; invalid -> shake, valid -> fake network call
+    handleSubmit(submitValidForm, playShake);
+  };
 
+  const submitValidForm = () => {
     setIsSubmitting(true);
 
     // Pretend we are calling a server: wait 1 second
@@ -354,7 +345,7 @@ export default function LoginScreen() {
           {/* Submit button – disabled + spinner while submitting */}
           <TouchableOpacity
             style={[styles.button, isSubmitting && styles.buttonDisabled]}
-            onPress={handleSubmit}
+            onPress={onSubmit}
             disabled={isSubmitting || success !== null}
             activeOpacity={0.85}
           >

@@ -6,6 +6,7 @@
 //   └── Main  -> Bottom Tabs       (when a user is logged in)
 //        ├── DashboardTab -> Stack -> DashboardScreen   (MANAGER ONLY)
 //        ├── MenuTab      -> Stack -> MenuScreen
+//        ├── BookTab      -> Stack -> ReservationScreen -> MyReservationsScreen (customers, Q9)
 //        ├── CartTab      -> Stack -> CartScreen -> OrderSummaryScreen (badge = items in cart)
 //        └── ProfileTab   -> Stack -> ProfileScreen
 //
@@ -26,6 +27,8 @@ import DashboardScreen from '../screens/DashboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CartScreen from '../screens/CartScreen';
 import OrderSummaryScreen from '../screens/OrderSummaryScreen';
+import ReservationScreen from '../screens/ReservationScreen';
+import MyReservationsScreen from '../screens/MyReservationsScreen';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { CartProvider, useCart } from '../context/CartContext';
@@ -37,6 +40,7 @@ const MenuStack = createNativeStackNavigator();
 const DashboardStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
 const CartStack = createNativeStackNavigator();
+const BookStack = createNativeStackNavigator();
 
 // Shared header style for every stack, built from the current theme.
 // On iOS 26+ the system wraps header buttons in a light "glass" bubble;
@@ -102,9 +106,28 @@ function CartStackScreen() {
   );
 }
 
+function BookStackScreen() {
+  const { colors } = useTheme();
+  return (
+    <BookStack.Navigator screenOptions={stackOptions(colors)}>
+      <BookStack.Screen
+        name="Reservation"
+        component={ReservationScreen}
+        options={{ title: 'Reserve a Table' }}
+      />
+      <BookStack.Screen
+        name="MyReservations"
+        component={MyReservationsScreen}
+        options={{ title: 'My Reservations', headerBackTitle: 'Book' }}
+      />
+    </BookStack.Navigator>
+  );
+}
+
 const TAB_ICONS = {
   DashboardTab: ['stats-chart', 'stats-chart-outline'],
   MenuTab: ['restaurant', 'restaurant-outline'],
+  BookTab: ['calendar', 'calendar-outline'],
   CartTab: ['bag-handle', 'bag-handle-outline'],
   ProfileTab: ['person', 'person-outline'],
 };
@@ -141,6 +164,10 @@ function MainTabs() {
         />
       )}
       <Tab.Screen name="MenuTab" component={MenuStackScreen} options={{ title: 'Menu' }} />
+      {/* Table booking is for customers (managers handle reservations in the Dashboard) */}
+      {!isManager && (
+        <Tab.Screen name="BookTab" component={BookStackScreen} options={{ title: 'Book' }} />
+      )}
       <Tab.Screen
         name="CartTab"
         component={CartStackScreen}
