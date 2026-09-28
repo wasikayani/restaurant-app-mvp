@@ -38,6 +38,8 @@ import MenuSkeleton from '../components/MenuSkeleton';
 import { categories, fetchMenu } from '../data/menu';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
+import { CART_ACTIONS } from '../reducers/cartReducer';
 import { radius, spacing } from '../theme/colors';
 
 const formatPrice = (value) => `Rs ${value.toLocaleString('en-PK')}`;
@@ -50,6 +52,7 @@ export default function MenuScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const { user } = useAuth(); // Q6: logged-in user comes from AuthContext
+  const { state: cart, dispatch } = useCart(); // Q7: shared cart (useReducer)
 
   // ---------------- State ----------------
   const [menuItems, setMenuItems] = useState([]);
@@ -223,9 +226,14 @@ export default function MenuScreen({ navigation }) {
       .finally(() => setIsRefreshing(false));
   };
 
+  // Q7: Add to Cart dispatches ADD_ITEM to the cart reducer
   const onAdd = (item) => {
-    setToast(`${item.name} added to cart`); // real cart arrives in Q7
+    dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: item });
+    setToast(`${item.name} added to cart`);
   };
+
+  // How many of this dish are already in the cart (shown on the Add button)
+  const quantityInCart = (id) => cart.items.find((i) => i.id === id)?.quantity ?? 0;
 
   const countFor = (categoryId) =>
     categoryId === 'All'
@@ -288,7 +296,13 @@ export default function MenuScreen({ navigation }) {
               activeOpacity={0.8}
             >
               <Ionicons name={disabled ? 'close' : 'add'} size={16} color={colors.white} />
-              <Text style={styles.addText}>{disabled ? 'N/A' : 'Add'}</Text>
+              <Text style={styles.addText}>
+                {disabled
+                  ? 'N/A'
+                  : quantityInCart(item.id) > 0
+                    ? `Add · ${quantityInCart(item.id)}`
+                    : 'Add'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -516,6 +530,9 @@ export default function MenuScreen({ navigation }) {
           <Text style={styles.toastText} numberOfLines={1}>
             {toast}
           </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('CartTab')} hitSlop={10}>
+            <Text style={styles.toastAction}>View cart</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -838,4 +855,5 @@ const createStyles = (colors) =>
       elevation: 6,
     },
     toastText: { color: colors.toastText, fontWeight: '700', flex: 1 },
+    toastAction: { color: colors.accent, fontWeight: '800' },
   });
