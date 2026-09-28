@@ -3,8 +3,8 @@
 **Developed by:** Muhammad Wasim
 **Course:** Mobile Application Development – Assignment 1 (Fall 2026)
 
-A frontend-only React Native (Expo) prototype of a restaurant app. Customers can browse the menu, book a table and place an order. Managers can handle orders, reservations and the menu.
-Assignment 1 – Fall 2026. No backend, no external API and no state-management library: all data is mock data held in React state.
+A frontend-only React Native (Expo) prototype of a restaurant app. Customers can browse the menu, search, favourite dishes, build a cart with promo codes and review an order summary. Managers get their own dashboard.
+There is no backend, no external API and no state-management library. All data is mock data held in React state and Context.
 
 ---
 
@@ -27,6 +27,9 @@ npm install
 
 # 3. Start the Expo development server
 npx expo start
+
+# 4. (optional) Run the unit tests
+npm test
 ```
 
 **Run on a phone (Expo Go):** install *Expo Go* from the App Store or Play Store. Connect the phone to the same Wi-Fi as the computer, then scan the QR code shown in the terminal. On iPhone, use the Camera app; on Android, use Expo Go.
@@ -45,20 +48,28 @@ If the phone cannot connect, run `npx expo start --tunnel`.
 
 New accounts can also be created on the Sign Up tab. They last only while the app is open.
 
+**Promo codes:** `WELCOME10` (10% off) and `FEAST20` (20% off).
+
 ---
 
 ## Project structure
 
 ```
-src/
-├── components/   reusable UI (FormInput, SuccessModal, …)
-├── screens/      one file per screen
-├── context/      Context providers (Auth, Theme, Cart, Orders)
-├── reducers/     pure reducer functions
-├── hooks/        custom hooks
-├── data/         mock data (users, menu, tables, reservations)
-├── navigation/   React Navigation setup
-└── theme/        light and dark colour palettes
+restaurant-app-mvp/
+├── App.js              providers (Theme, Auth) + navigator
+├── __tests__/          Jest unit tests (cart reducer, order totals)
+├── notes/              written notes for Q4, Q6, Q7, Q8
+├── screenshots/        screenshots used in this README
+└── src/
+    ├── components/     reusable UI (FormInput, MenuItemCard, HeaderAvatar, AccountMenu, ...)
+    ├── screens/        Login, Menu, Cart, OrderSummary, Profile, Dashboard
+    ├── context/        AuthContext, ThemeContext, CartContext
+    ├── reducers/       cartReducer
+    ├── hooks/          custom hooks (Q9)
+    ├── data/           mock data (users, menu)
+    ├── navigation/     bottom tabs + nested stacks
+    ├── theme/          light and dark colour palettes
+    └── utils/          pure helpers (order totals)
 ```
 
 ---
@@ -67,9 +78,15 @@ src/
 
 | Screen / file | Hooks | Why |
 |---|---|---|
-| LoginScreen (Q3) | useState | mode, form values, errors, showPassword, isSubmitting, success popup |
-
-*(This table grows with each question.)*
+| LoginScreen (Q3, Q6) | useState, useContext (useAuth, useTheme) | mode, form values, errors, show-password, isSubmitting, success popup; stores the user in AuthContext |
+| MenuScreen (Q4, Q5, Q8) | useState, useEffect, useRef, useMemo, useCallback, useContext | load the menu with cleanup, header count, search input and FlatList refs, manual debounce, render counter, one memoised filter/search/sort list, stable handlers |
+| MenuItemCard (Q8) | React.memo, useContext | re-renders only when its own props change |
+| MenuSkeleton | useState, useEffect | pulsing loading animation with cleanup |
+| ProfileScreen (Q6) | useContext (useAuth, useTheme) | shows the user and toggles dark mode |
+| CartScreen (Q7) | useReducer (via useCart), useState, useContext | all cart changes are dispatched actions; promo input state |
+| OrderSummaryScreen (Q8) | useMemo, useContext | totals recalculated only when items or discount change |
+| AuthContext / ThemeContext (Q6) | createContext, useState, useContext | global user and theme with useAuth / useTheme hooks |
+| CartContext (Q7) | useReducer, useContext | shared cart with the useCart hook |
 
 ---
 
@@ -77,16 +94,119 @@ src/
 
 ### Q3 – Login and Signup
 
-| Login screen | Signup screen |
-|---|---|
-| <img src="screenshots/login-screen.jpeg" width="250" alt="Login screen"> | <img src="screenshots/signup-screen.jpeg" width="250" alt="Signup screen"> |
+| Login | Signup | Validation errors | Successful login |
+|---|---|---|---|
+| <img src="screenshots/login-screen.jpeg" width="190" alt="Login screen"> | <img src="screenshots/signup-screen.jpeg" width="190" alt="Signup screen"> | <img src="screenshots/validation-errors.jpeg" width="190" alt="Validation errors"> | <img src="screenshots/login-successful.jpeg" width="190" alt="Successful login"> |
 
-| Validation errors | Successful login |
+### Q4 – Menu browsing
+
+<img src="screenshots/menu-screen.jpeg" width="240" alt="Menu screen">
+
+### Q5 – Search and render counter
+
+| Render counter after searching "cake" | Render counter on the menu |
 |---|---|
-| <img src="screenshots/validation-errors.png.jpeg" width="250" alt="Validation errors"> | <img src="screenshots/login-successful.jpeg" width="250" alt="Successful login"> |
+| <img src="screenshots/render-counter1.jpeg" width="240" alt="Render counter after search"> | <img src="screenshots/render-counter2.jpeg" width="240" alt="Render counter"> |
+
+### Q6 – Profile, dark mode and role-based tabs
+
+| Profile (dark mode) | Menu (dark mode, manager) | Manager Dashboard |
+|---|---|---|
+| <img src="screenshots/profile-dark.jpeg" width="220" alt="Profile in dark mode"> | <img src="screenshots/menu-dark.jpeg" width="220" alt="Menu in dark mode"> | <img src="screenshots/manager-dashboard.jpeg" width="220" alt="Manager dashboard"> |
+
+### Q7 – Cart and Q8 – Order Summary
+
+| Cart (useReducer) | Order Summary (useMemo) |
+|---|---|
+| <img src="screenshots/cart-screen.jpeg" width="240" alt="Cart screen"> | <img src="screenshots/order-summary.jpeg" width="240" alt="Order summary"> |
+
+### Q8 – React.memo proof (console)
+
+**Before optimisation:** tapping one heart re-renders every card.
+
+<img src="screenshots/q8-before.jpeg" width="700" alt="Console before optimisation">
+
+**After optimisation (React.memo + useCallback):** only the tapped card re-renders.
+
+<img src="screenshots/q8-after.jpeg" width="700" alt="Console after optimisation">
+
+---
+
+## Assignment notes
+
+### Q4 – What if the filter effect's dependency array is empty?
+
+The filtering effect in `MenuScreen.js` is written as
+`useEffect(() => { ...setFilteredItems(...) }, [selectedCategory, menuItems])`.
+
+If its dependency array were left empty (`[]`), React would run the effect only once, right after the first render. At that moment `menuItems` is still an empty array, because the 1.5-second "fetch" has not finished yet. So `filteredItems` would be set to `[]` and never updated again.
+
+The result: the screen would stay empty after loading, and tapping a category chip would change `selectedCategory` but not the list. The effect would keep using the **stale values** captured during the first render.
+
+Listing `selectedCategory` and `menuItems` tells React to re-run the filter whenever either value changes, so the list always matches the current data and selection.
+
+*(≈110 words)*
+
+### Q6 – Why Context instead of prop drilling
+
+The logged-in user and the light/dark theme are needed by almost every screen: Login, Menu, Profile, Dashboard, the header avatar and the account menu.
+With prop drilling, `App` would have to pass `user` and `colors` down through the navigator, every tab, every stack and every component, even components that do not use them and only forward them.
+Context puts this data in one Provider at the top of the app. Any component can read it directly with `useAuth()` or `useTheme()`, however deep it is in the tree.
+This keeps components independent and easier to move or reuse. Logging out or toggling dark mode in one place instantly updates every screen that uses the data.
+
+**Drawback:** when a context value changes, every component that consumes that context re-renders, even if it only uses part of the value. For example, toggling the theme re-renders every screen that calls `useTheme()`. For data that changes very often, this can hurt performance, so context is best for "global and rarely changing" data like auth and theme.
+
+### Q7 – Cart reducer test cases
+
+Burger = `{ id: 'm6', price: 1450 }`, Shake = `{ id: 'm18', price: 590 }`.
+All cases are automated in `__tests__/cartReducer.test.js` (run `npm test`: 14 tests, all passing).
+
+| # | Action | Initial state | Expected state |
+|---|--------|---------------|----------------|
+| 1 | `ADD_ITEM` (Burger) | `items: []` | `items: [{ Burger, quantity: 1, note: '' }]` |
+| 2 | `ADD_ITEM` (Burger) | `items: [Burger ×1]` | `items: [Burger ×2]` (no duplicate line) |
+| 3 | `INCREMENT` (Shake) | `items: [Shake ×2]` | `items: [Shake ×3]` |
+| 4 | `DECREMENT` (Shake) | `items: [Shake ×3]` | `items: [Shake ×2]` |
+| 5 | `DECREMENT` (Burger) | `items: [Burger ×1, Shake ×2]` | `items: [Shake ×2]` (Burger removed at zero) |
+| 6 | `REMOVE_ITEM` (Burger) | `items: [Burger ×4, Shake ×1]` | `items: [Shake ×1]` |
+| 7 | `UPDATE_NOTE` (Burger, "no onions") | `items: [Burger, note: '']` | `items: [Burger, note: 'no onions']` |
+| 8 | `APPLY_PROMO` (" feast20 ") | `promoCode: null, discountPercent: 0` | `promoCode: 'FEAST20', discountPercent: 20` |
+| 9 | `APPLY_PROMO` ("FREE100") | `promoCode: null, discountPercent: 0` | unchanged (same object); the screen shows an error message |
+| 10 | `REMOVE_PROMO` | `promoCode: 'WELCOME10', discountPercent: 10` | `promoCode: null, discountPercent: 0` |
+| 11 | `CLEAR_CART` | `items: [Burger ×2, Shake ×1], promoCode: 'FEAST20'` | `{ items: [], promoCode: null, discountPercent: 0 }` |
+| 12 | Any action on a frozen state | frozen state object | previous state is not mutated (purity check) |
+
+### Q7 – useReducer vs useState
+
+The cart has several related pieces of state (items, quantities, notes, promo code and discount) and eight different ways to change them.
+With `useState` this logic would be spread across many setter calls inside the screens, and it would be easy to forget a rule, for example removing an item when its quantity reaches zero.
+`useReducer` puts every transition in one pure function, so the screens only `dispatch` an action that describes *what happened*. The reducer is also easy to test without any UI, which is exactly what the Jest tests do.
+`useState` would have been enough for a very simple cart, such as a single item count or a list where you only add and remove items, with no quantities, notes or promo codes.
+
+### Q8 – When not to use useMemo and useCallback
+
+`useMemo` and `useCallback` are not free. Each one stores a cached value and compares its dependency array on every render, and it makes the code harder to read.
+
+Do not use them when:
+
+- **The calculation is cheap**, such as adding two numbers or formatting a string. Recalculating is faster than caching.
+- **The function is passed to a normal element** like `<TouchableOpacity>`, or to a child that is *not* wrapped in `React.memo`. A stable reference changes nothing there.
+- **The dependencies change on almost every render**, so the cache is thrown away anyway.
+- **There is no measured problem.** Optimise only after you see slow renders, for example with a render counter or console logs.
+
+In this app they are used only where it matters: filtering and sorting the menu list, the order totals, and the handlers passed to the memoised `MenuItemCard`.
+
+*(≈140 words)*
+
+#### Proof (before and after)
+
+| Situation | Cards re-rendered after tapping ONE heart |
+|---|---|
+| Before: `ENABLE_MEMO = false` (no `React.memo`, new handler functions every render) | **19** (every card) |
+| After: `React.memo` and `useCallback` | **1** (only the tapped card) |
 
 ---
 
 ## Demo video
 
-*Link will be added after Question 10.*
+*The link will be added after Question 10.*
