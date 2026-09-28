@@ -73,9 +73,14 @@ src/
 ## Screenshots
 
 ### Q3 – Login and Signup
+
+| Login screen | Signup screen |
+|---|---|
+| <img src="screenshots/login-screen.jpeg" width="250" alt="Login screen"> | <img src="screenshots/signup-screen.jpeg" width="250" alt="Signup screen"> |
+
 | Validation errors | Successful login |
 |---|---|
-| ![Validation errors](screenshots/q3-validation-errors.png) | ![Login success](screenshots/q3-login-success.png) |
+| <img src="screenshots/validation-errors.png.jpeg" width="250" alt="Validation errors"> | <img src="screenshots/login-successful.jpeg" width="250" alt="Successful login"> |
 
 ---
 
