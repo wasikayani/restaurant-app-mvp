@@ -12,6 +12,11 @@
 // Animations use React Native's built-in Animated + LayoutAnimation APIs
 // (no extra library). Animated values are created with
 // useState(() => new Animated.Value(..)) so this screen still uses ONLY useState.
+//
+// Q6 refactor: a successful login now stores the user in AuthContext
+// (login(user) from useAuth) instead of passing it through navigation params.
+// AppNavigator watches `user` and shows the right tabs automatically:
+// Customer -> Menu tab, Manager -> Dashboard tab.
 
 import { useState } from 'react';
 import {
@@ -35,7 +40,9 @@ import { Ionicons } from '@expo/vector-icons';
 import FormInput from '../components/FormInput';
 import SuccessModal, { SUCCESS_DURATION } from '../components/SuccessModal';
 import { findUser, emailExists, addUser } from '../data/users';
-import { lightColors as colors, radius, spacing } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { radius, spacing } from '../theme/colors';
 
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80';
 
@@ -52,7 +59,10 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 // At least 8 characters AND at least one digit
 const PASSWORD_REGEX = /^(?=.*\d).{8,}$/;
 
-export default function LoginScreen({ navigation }) {
+export default function LoginScreen() {
+  const { login } = useAuth();
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
@@ -134,9 +144,9 @@ export default function LoginScreen({ navigation }) {
   };
 
   const goToHome = (user) => {
-    // replace() removes Login from history, so the back gesture
-    // cannot return to it. Customer -> Menu, Manager -> Dashboard.
-    navigation.replace(user.role === 'manager' ? 'Dashboard' : 'Menu', { user });
+    // Save the user globally. AppNavigator re-renders and swaps the Login
+    // screen for the tabs (Customer -> Menu, Manager -> Dashboard).
+    login(user);
   };
 
   // Show the animated confirmation, then navigate when the progress bar is full
@@ -328,7 +338,7 @@ export default function LoginScreen({ navigation }) {
                         <Ionicons
                           name={r.icon}
                           size={22}
-                          color={active ? colors.primary : colors.textMuted}
+                          color={active ? colors.primaryText : colors.textMuted}
                         />
                         <Text style={[styles.roleText, active && styles.roleTextActive]}>
                           {r.label}
@@ -368,7 +378,7 @@ export default function LoginScreen({ navigation }) {
           {/* Demo credentials hint (helps the teacher test quickly) */}
           {!isSignup && (
             <View style={styles.hint}>
-              <Ionicons name="information-circle-outline" size={16} color={colors.primary} />
+              <Ionicons name="information-circle-outline" size={16} color={colors.primaryText} />
               <Text style={styles.hintText}>
                 Customer: customer@greenfork.pk / customer123{'\n'}
                 Manager: manager@greenfork.pk / manager123
@@ -384,91 +394,92 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.background },
-  scroll: { flexGrow: 1 },
-  hero: { height: 280, backgroundColor: colors.primaryDark },
-  heroOverlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 30,
-  },
-  logo: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.35)',
-    marginBottom: spacing.sm,
-  },
-  brand: { color: colors.white, fontSize: 32, fontWeight: '800', letterSpacing: 0.5 },
-  tagline: { color: '#E7F5EE', fontSize: 15, marginTop: 4 },
-  card: {
-    flex: 1,
-    backgroundColor: colors.background,
-    marginTop: -28,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: '#EFE9DC',
-    borderRadius: radius.pill,
-    padding: 4,
-    marginBottom: spacing.lg,
-  },
-  segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: radius.pill, alignItems: 'center' },
-  segmentBtnActive: { backgroundColor: colors.primary },
-  segmentText: { fontWeight: '600', color: colors.textMuted },
-  segmentTextActive: { color: colors.white },
-  title: { fontSize: 24, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 14, color: colors.textMuted, marginTop: 4, marginBottom: spacing.lg },
-  label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
-  roleRow: { flexDirection: 'row', gap: 12, marginBottom: spacing.lg },
-  roleCard: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-    gap: 6,
-  },
-  roleCardActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  roleText: { fontWeight: '600', color: colors.textMuted },
-  roleTextActive: { color: colors.primary },
-  button: {
-    backgroundColor: colors.primary,
-    height: 54,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing.sm,
-    shadowColor: colors.primary,
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  buttonDisabled: { opacity: 0.6 },
-  buttonText: { color: colors.white, fontSize: 16, fontWeight: '700' },
-  switchText: { textAlign: 'center', marginTop: spacing.lg, color: colors.textMuted },
-  switchLink: { color: colors.primary, fontWeight: '700' },
-  hint: {
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: colors.primarySoft,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    marginTop: spacing.lg,
-  },
-  hintText: { flex: 1, fontSize: 12, color: colors.primaryDark, lineHeight: 18 },
-});
+const createStyles = (colors) =>
+  StyleSheet.create({
+    flex: { flex: 1, backgroundColor: colors.background },
+    scroll: { flexGrow: 1 },
+    hero: { height: 280, backgroundColor: colors.primaryDark },
+    heroOverlay: {
+      flex: 1,
+      backgroundColor: colors.overlay,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingTop: 30,
+    },
+    logo: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 3,
+      borderColor: 'rgba(255,255,255,0.35)',
+      marginBottom: spacing.sm,
+    },
+    brand: { color: colors.white, fontSize: 32, fontWeight: '800', letterSpacing: 0.5 },
+    tagline: { color: '#E7F5EE', fontSize: 15, marginTop: 4 },
+    card: {
+      flex: 1,
+      backgroundColor: colors.background,
+      marginTop: -28,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      padding: spacing.lg,
+      paddingBottom: spacing.xl,
+    },
+    segment: {
+      flexDirection: 'row',
+      backgroundColor: colors.muted,
+      borderRadius: radius.pill,
+      padding: 4,
+      marginBottom: spacing.lg,
+    },
+    segmentBtn: { flex: 1, paddingVertical: 10, borderRadius: radius.pill, alignItems: 'center' },
+    segmentBtnActive: { backgroundColor: colors.primary },
+    segmentText: { fontWeight: '600', color: colors.textMuted },
+    segmentTextActive: { color: colors.white },
+    title: { fontSize: 24, fontWeight: '800', color: colors.text },
+    subtitle: { fontSize: 14, color: colors.textMuted, marginTop: 4, marginBottom: spacing.lg },
+    label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
+    roleRow: { flexDirection: 'row', gap: 12, marginBottom: spacing.lg },
+    roleCard: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 14,
+      borderRadius: radius.md,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      gap: 6,
+    },
+    roleCardActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+    roleText: { fontWeight: '600', color: colors.textMuted },
+    roleTextActive: { color: colors.primaryText },
+    button: {
+      backgroundColor: colors.primary,
+      height: 54,
+      borderRadius: radius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: spacing.sm,
+      shadowColor: colors.primary,
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+    buttonDisabled: { opacity: 0.6 },
+    buttonText: { color: colors.white, fontSize: 16, fontWeight: '700' },
+    switchText: { textAlign: 'center', marginTop: spacing.lg, color: colors.textMuted },
+    switchLink: { color: colors.primaryText, fontWeight: '700' },
+    hint: {
+      flexDirection: 'row',
+      gap: 8,
+      backgroundColor: colors.primarySoft,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      marginTop: spacing.lg,
+    },
+    hintText: { flex: 1, fontSize: 12, color: colors.primaryText, lineHeight: 18 },
+  });

@@ -1,19 +1,24 @@
 // src/components/FormInput.js
 // Reusable text field: icon + input + optional eye toggle + error message.
 // It holds NO state itself – the parent screen controls the value (controlled input).
+// Colours come from useTheme(), so it works in light and dark mode.
 
 import { View, TextInput, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { lightColors as colors, radius, spacing } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { radius, spacing } from '../theme/colors';
 
 export default function FormInput({
   icon,
   error,
-  secure = false,       // true for password fields
-  showSecure = false,   // parent's showPassword state
-  onToggleSecure,       // parent's toggle function
-  ...inputProps         // value, onChangeText, placeholder, keyboardType ...
+  secure = false, // true for password fields
+  showSecure = false, // parent's showPassword state
+  onToggleSecure, // parent's toggle function
+  ...inputProps // value, onChangeText, placeholder, keyboardType ...
 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.wrapper}>
       <View style={[styles.row, error && styles.rowError]}>
@@ -40,20 +45,21 @@ export default function FormInput({
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: { marginBottom: spacing.md },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.card,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
-    height: 52,
-    gap: 10,
-  },
-  rowError: { borderColor: colors.error },
-  input: { flex: 1, fontSize: 15, color: colors.text },
-  error: { color: colors.error, fontSize: 12, marginTop: 4, marginLeft: 4 },
-});
+const createStyles = (colors) =>
+  StyleSheet.create({
+    wrapper: { marginBottom: spacing.md },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.card,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+      height: 52,
+      gap: 10,
+    },
+    rowError: { borderColor: colors.error },
+    input: { flex: 1, fontSize: 15, color: colors.text },
+    error: { color: colors.error, fontSize: 12, marginTop: 4, marginLeft: 4 },
+  });

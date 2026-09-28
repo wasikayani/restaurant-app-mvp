@@ -4,9 +4,12 @@
 
 import { useState, useEffect } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
-import { lightColors as colors, radius, spacing } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { radius, spacing } from '../theme/colors';
 
 export default function MenuSkeleton({ count = 4 }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
   // Animated value created once (lazy useState initialiser)
   const [pulse] = useState(() => new Animated.Value(0.4));
 
@@ -43,18 +46,19 @@ export default function MenuSkeleton({ count = 4 }) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: 12,
-    marginHorizontal: spacing.md,
-    marginBottom: 14,
-  },
-  image: { width: 104, height: 104, borderRadius: radius.md, backgroundColor: '#ECE6DA' },
-  body: { flex: 1, marginLeft: 12, justifyContent: 'space-between' },
-  line: { height: 10, borderRadius: 6, backgroundColor: '#ECE6DA', marginBottom: 6 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  button: { width: 64, height: 32, borderRadius: radius.pill, backgroundColor: '#ECE6DA' },
-});
+const createStyles = (colors) =>
+  StyleSheet.create({
+    card: {
+      flexDirection: 'row',
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      padding: 12,
+      marginHorizontal: spacing.md,
+      marginBottom: 14,
+    },
+    image: { width: 104, height: 104, borderRadius: radius.md, backgroundColor: colors.muted },
+    body: { flex: 1, marginLeft: 12, justifyContent: 'space-between' },
+    line: { height: 10, borderRadius: 6, backgroundColor: colors.muted, marginBottom: 6 },
+    row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    button: { width: 64, height: 32, borderRadius: radius.pill, backgroundColor: colors.muted },
+  });

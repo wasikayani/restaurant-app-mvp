@@ -36,7 +36,9 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import MenuSkeleton from '../components/MenuSkeleton';
 import { categories, fetchMenu } from '../data/menu';
-import { lightColors as colors, radius, spacing } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { radius, spacing } from '../theme/colors';
 
 const formatPrice = (value) => `Rs ${value.toLocaleString('en-PK')}`;
 const SEARCH_DELAY = 400; // ms of "no typing" before the search is applied
@@ -44,8 +46,10 @@ const MAX_RECENT = 5; // how many recent searches to remember
 const BACK_TO_TOP_OFFSET = 300; // px scrolled before the "Back to top" button appears
 const SHOW_DEBUG_BY_DEFAULT = false; // long-press the search icon to show/hide the render counter
 
-export default function MenuScreen({ route, navigation }) {
-  const user = route.params?.user;
+export default function MenuScreen({ navigation }) {
+  const { colors } = useTheme();
+  const styles = createStyles(colors);
+  const { user } = useAuth(); // Q6: logged-in user comes from AuthContext
 
   // ---------------- State ----------------
   const [menuItems, setMenuItems] = useState([]);
@@ -329,7 +333,11 @@ export default function MenuScreen({ route, navigation }) {
               onPress={() => selectCategory(c.id)}
               activeOpacity={0.85}
             >
-              <Ionicons name={c.icon} size={16} color={active ? colors.white : colors.primary} />
+              <Ionicons
+                name={c.icon}
+                size={16}
+                color={active ? colors.onPrimary : colors.primaryText}
+              />
               <Text style={[styles.chipText, active && styles.chipTextActive]}>{c.label}</Text>
               {!isLoading && (
                 <View style={[styles.chipCount, active && styles.chipCountActive]}>
@@ -378,7 +386,7 @@ export default function MenuScreen({ route, navigation }) {
           hitSlop={10}
           accessibilityLabel="Focus search"
         >
-          <Ionicons name="search" size={20} color={colors.primary} />
+          <Ionicons name="search" size={20} color={colors.primaryText} />
         </TouchableOpacity>
         <TextInput
           ref={searchInputRef}
@@ -440,7 +448,7 @@ export default function MenuScreen({ route, navigation }) {
         <View>
           {ListHeader}
           <View style={styles.loadingRow}>
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color={colors.primaryText} />
             <Text style={styles.loadingText}>Preparing today’s menu…</Text>
           </View>
           <MenuSkeleton count={4} />
@@ -462,7 +470,7 @@ export default function MenuScreen({ route, navigation }) {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={onRefresh}
-              tintColor={colors.primary}
+              tintColor={colors.primaryText}
               colors={[colors.primary]}
             />
           }
@@ -470,7 +478,7 @@ export default function MenuScreen({ route, navigation }) {
             searchQuery.trim() ? (
               <View style={styles.emptyWrap}>
                 <View style={styles.emptyIcon}>
-                  <Ionicons name="search-outline" size={34} color={colors.primary} />
+                  <Ionicons name="search-outline" size={34} color={colors.primaryText} />
                 </View>
                 <Text style={styles.emptyTitle}>No dishes found</Text>
                 <Text style={styles.emptyText}>
@@ -504,7 +512,7 @@ export default function MenuScreen({ route, navigation }) {
       {/* "Added" toast */}
       {toast && (
         <View style={styles.toast}>
-          <Ionicons name="checkmark-circle" size={20} color={colors.white} />
+          <Ionicons name="checkmark-circle" size={20} color={colors.toastText} />
           <Text style={styles.toastText} numberOfLines={1}>
             {toast}
           </Text>
@@ -514,319 +522,320 @@ export default function MenuScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  listContent: { paddingBottom: 100 },
+const createStyles = (colors) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    listContent: { paddingBottom: 100 },
 
-  // Greeting + banner
-  greeting: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  hello: { fontSize: 15, color: colors.textMuted, fontWeight: '600' },
-  question: { fontSize: 24, fontWeight: '800', color: colors.text, marginTop: 2 },
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    margin: spacing.md,
-    borderRadius: radius.lg,
-    padding: 18,
-    overflow: 'hidden',
-  },
-  bannerTag: { color: '#A7F3D0', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
-  bannerTitle: { color: colors.white, fontSize: 19, fontWeight: '800', marginTop: 4 },
-  bannerText: { color: '#D1FAE5', fontSize: 13, marginTop: 4 },
-  bannerCode: { color: colors.white, fontWeight: '800' },
-  bannerIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+    // Greeting + banner
+    greeting: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
+    hello: { fontSize: 15, color: colors.textMuted, fontWeight: '600' },
+    question: { fontSize: 24, fontWeight: '800', color: colors.text, marginTop: 2 },
+    banner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      margin: spacing.md,
+      borderRadius: radius.lg,
+      padding: 18,
+      overflow: 'hidden',
+    },
+    bannerTag: { color: '#A7F3D0', fontSize: 11, fontWeight: '800', letterSpacing: 1 },
+    bannerTitle: { color: colors.white, fontSize: 19, fontWeight: '800', marginTop: 4 },
+    bannerText: { color: '#D1FAE5', fontSize: 13, marginTop: 4 },
+    bannerCode: { color: colors.white, fontWeight: '800' },
+    bannerIcon: {
+      width: 70,
+      height: 70,
+      borderRadius: 35,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  // Chips
-  chips: { paddingHorizontal: spacing.md, gap: 10, paddingBottom: 4 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 9,
-    paddingHorizontal: 14,
-    borderRadius: radius.pill,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontWeight: '700', color: colors.text, fontSize: 14 },
-  chipTextActive: { color: colors.white },
-  chipCount: {
-    minWidth: 20,
-    paddingHorizontal: 5,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
-  chipCountText: { fontSize: 11, fontWeight: '800', color: colors.primary },
-  chipCountTextActive: { color: colors.white },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.text,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm + 4,
-  },
+    // Chips
+    chips: { paddingHorizontal: spacing.md, gap: 10, paddingBottom: 4 },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 9,
+      paddingHorizontal: 14,
+      borderRadius: radius.pill,
+      backgroundColor: colors.card,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { fontWeight: '700', color: colors.text, fontSize: 14 },
+    chipTextActive: { color: colors.white },
+    chipCount: {
+      minWidth: 20,
+      paddingHorizontal: 5,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    chipCountActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+    chipCountText: { fontSize: 11, fontWeight: '800', color: colors.primaryText },
+    chipCountTextActive: { color: colors.white },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: colors.text,
+      marginHorizontal: spacing.md,
+      marginTop: spacing.lg,
+      marginBottom: spacing.sm + 4,
+    },
 
-  // Card
-  card: {
-    flexDirection: 'row',
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    padding: 12,
-    marginHorizontal: spacing.md,
-    marginBottom: 14,
-    shadowColor: '#1C2A24',
-    shadowOpacity: 0.07,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  cardDisabled: { opacity: 0.55 },
-  imageWrap: {
-    width: 104,
-    height: 104,
-    borderRadius: radius.md,
-    overflow: 'hidden',
-    backgroundColor: '#EFE9DC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imageFallback: { position: 'absolute' },
-  image: { width: '100%', height: '100%' },
-  imageDisabled: { opacity: 0.5 },
-  specialBadge: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.accent,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: radius.pill,
-  },
-  specialText: { color: colors.white, fontSize: 9, fontWeight: '800' },
-  soldOut: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(28,42,36,0.75)',
-    paddingVertical: 4,
-    alignItems: 'center',
-  },
-  soldOutText: { color: colors.white, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-  cardBody: { flex: 1, marginLeft: 12, justifyContent: 'space-between' },
-  name: { fontSize: 16, fontWeight: '800', color: colors.text },
-  description: { fontSize: 12.5, color: colors.textMuted, lineHeight: 17, marginTop: 2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
-  meta: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
-  metaDot: { color: colors.textMuted, marginHorizontal: 3 },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 6,
-  },
-  price: { fontSize: 16, fontWeight: '800', color: colors.primary },
-  priceDisabled: { color: colors.textMuted },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: radius.pill,
-  },
-  addButtonDisabled: { backgroundColor: '#9CA3AF' },
-  addText: { color: colors.white, fontWeight: '800', fontSize: 13 },
+    // Card
+    card: {
+      flexDirection: 'row',
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      padding: 12,
+      marginHorizontal: spacing.md,
+      marginBottom: 14,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.07,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 2,
+    },
+    cardDisabled: { opacity: 0.55 },
+    imageWrap: {
+      width: 104,
+      height: 104,
+      borderRadius: radius.md,
+      overflow: 'hidden',
+      backgroundColor: colors.muted,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    imageFallback: { position: 'absolute' },
+    image: { width: '100%', height: '100%' },
+    imageDisabled: { opacity: 0.5 },
+    specialBadge: {
+      position: 'absolute',
+      top: 6,
+      left: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: colors.accent,
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: radius.pill,
+    },
+    specialText: { color: colors.white, fontSize: 9, fontWeight: '800' },
+    soldOut: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: 'rgba(20,30,25,0.78)',
+      paddingVertical: 4,
+      alignItems: 'center',
+    },
+    soldOutText: { color: colors.white, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+    cardBody: { flex: 1, marginLeft: 12, justifyContent: 'space-between' },
+    name: { fontSize: 16, fontWeight: '800', color: colors.text },
+    description: { fontSize: 12.5, color: colors.textMuted, lineHeight: 17, marginTop: 2 },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
+    meta: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+    metaDot: { color: colors.textMuted, marginHorizontal: 3 },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 6,
+    },
+    price: { fontSize: 16, fontWeight: '800', color: colors.primaryText },
+    priceDisabled: { color: colors.textMuted },
+    addButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 2,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: radius.pill,
+    },
+    addButtonDisabled: { backgroundColor: '#9CA3AF' },
+    addText: { color: colors.white, fontWeight: '800', fontSize: 13 },
 
-  // Loading / empty / error
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.lg,
-    marginBottom: spacing.md,
-  },
-  loadingText: { color: colors.textMuted, fontWeight: '600' },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: 30 },
-  center: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  errorIcon: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  errorTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
-  errorText: { color: colors.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 20 },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: spacing.lg,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 26,
-    paddingVertical: 13,
-    borderRadius: radius.pill,
-  },
-  retryText: { color: colors.white, fontWeight: '800', fontSize: 15 },
+    // Loading / empty / error
+    loadingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginHorizontal: spacing.md,
+      marginTop: spacing.lg,
+      marginBottom: spacing.md,
+    },
+    loadingText: { color: colors.textMuted, fontWeight: '600' },
+    empty: { textAlign: 'center', color: colors.textMuted, marginTop: 30 },
+    center: {
+      flex: 1,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: spacing.xl,
+    },
+    errorIcon: {
+      width: 90,
+      height: 90,
+      borderRadius: 45,
+      backgroundColor: colors.errorSoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: spacing.md,
+    },
+    errorTitle: { fontSize: 20, fontWeight: '800', color: colors.text },
+    errorText: { color: colors.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 20 },
+    retryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginTop: spacing.lg,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 26,
+      paddingVertical: 13,
+      borderRadius: radius.pill,
+    },
+    retryText: { color: colors.white, fontWeight: '800', fontSize: 15 },
 
-  // Search (Q5)
-  searchArea: {
-    paddingHorizontal: spacing.md,
-    paddingTop: 12,
-    paddingBottom: 6,
-    backgroundColor: colors.background,
-    zIndex: 10,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.card,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
-    height: 50,
-    shadowColor: '#1C2A24',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  searchBarFocused: { borderColor: colors.primary },
-  searchInput: { flex: 1, fontSize: 15, color: colors.text },
-  debugLabel: {
-    alignSelf: 'flex-end',
-    marginTop: 4,
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textMuted,
-    backgroundColor: '#EFE9DC',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
-  },
-  recentPanel: {
-    position: 'absolute',
-    top: 66,
-    left: spacing.md,
-    right: spacing.md,
-    backgroundColor: colors.card,
-    borderRadius: radius.lg,
-    paddingVertical: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  recentTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.textMuted,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-  },
-  recentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-  },
-  recentText: { flex: 1, fontSize: 15, color: colors.text, fontWeight: '600' },
-  recentArrow: { transform: [{ rotate: '-45deg' }] },
-  emptyWrap: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: 30 },
-  emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
-  emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 20 },
-  emptyButton: {
-    marginTop: 16,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: radius.pill,
-  },
-  emptyButtonText: { color: colors.primary, fontWeight: '800' },
-  backToTop: {
-    position: 'absolute',
-    right: spacing.md,
-    bottom: 28,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 11,
-    borderRadius: radius.pill,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  backToTopRaised: { bottom: 92 },
-  backToTopText: { color: colors.white, fontWeight: '800' },
+    // Search (Q5)
+    searchArea: {
+      paddingHorizontal: spacing.md,
+      paddingTop: 12,
+      paddingBottom: 6,
+      backgroundColor: colors.background,
+      zIndex: 10,
+    },
+    searchBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: colors.card,
+      borderRadius: radius.pill,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      height: 50,
+      shadowColor: colors.shadow,
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 1,
+    },
+    searchBarFocused: { borderColor: colors.primaryText },
+    searchInput: { flex: 1, fontSize: 15, color: colors.text },
+    debugLabel: {
+      alignSelf: 'flex-end',
+      marginTop: 4,
+      fontSize: 10,
+      fontWeight: '700',
+      color: colors.textMuted,
+      backgroundColor: colors.muted,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: radius.pill,
+      overflow: 'hidden',
+    },
+    recentPanel: {
+      position: 'absolute',
+      top: 66,
+      left: spacing.md,
+      right: spacing.md,
+      backgroundColor: colors.card,
+      borderRadius: radius.lg,
+      paddingVertical: 8,
+      shadowColor: '#000',
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+      elevation: 8,
+    },
+    recentTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textMuted,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+    },
+    recentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+    },
+    recentText: { flex: 1, fontSize: 15, color: colors.text, fontWeight: '600' },
+    recentArrow: { transform: [{ rotate: '-45deg' }] },
+    emptyWrap: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingTop: 30 },
+    emptyIcon: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 12,
+    },
+    emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+    emptyText: { color: colors.textMuted, textAlign: 'center', marginTop: 6, lineHeight: 20 },
+    emptyButton: {
+      marginTop: 16,
+      borderWidth: 1.5,
+      borderColor: colors.primaryText,
+      paddingHorizontal: 20,
+      paddingVertical: 10,
+      borderRadius: radius.pill,
+    },
+    emptyButtonText: { color: colors.primaryText, fontWeight: '800' },
+    backToTop: {
+      position: 'absolute',
+      right: spacing.md,
+      bottom: 28,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: colors.primary,
+      paddingHorizontal: 16,
+      paddingVertical: 11,
+      borderRadius: radius.pill,
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 6,
+    },
+    backToTopRaised: { bottom: 92 },
+    backToTopText: { color: colors.white, fontWeight: '800' },
 
-  // Toast
-  toast: {
-    position: 'absolute',
-    left: spacing.md,
-    right: spacing.md,
-    bottom: 30,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.text,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    borderRadius: radius.md,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  toastText: { color: colors.white, fontWeight: '700', flex: 1 },
-});
+    // Toast
+    toast: {
+      position: 'absolute',
+      left: spacing.md,
+      right: spacing.md,
+      bottom: 30,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.toast,
+      paddingVertical: 13,
+      paddingHorizontal: 16,
+      borderRadius: radius.md,
+      shadowColor: '#000',
+      shadowOpacity: 0.2,
+      shadowRadius: 10,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 6,
+    },
+    toastText: { color: colors.toastText, fontWeight: '700', flex: 1 },
+  });

@@ -22,7 +22,7 @@ export const users = [
 // Find a user whose email + password match (email is not case-sensitive)
 export function findUser(email, password) {
   return users.find(
-    (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password
+    (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.password === password,
   );
 }
 
