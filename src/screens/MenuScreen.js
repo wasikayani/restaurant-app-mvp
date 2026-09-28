@@ -1,13 +1,17 @@
 // src/screens/MenuScreen.js
 // Question 4 – Menu Browsing Screen (hooks: useState, useEffect)
 // Question 5 – Search and Scroll Controls (hook: useRef)
+// Question 8 – Performance (hooks: useMemo, useCallback + React.memo on MenuItemCard)
 //
 // What each hook does here:
-//  useState  -> menuItems, isLoading, error, selectedCategory, filteredItems,
-//               isRefreshing, toast
+//  useState  -> menuItems, isLoading, error, selectedCategory, sortOrder,
+//               favoriteIds, isRefreshing, toast
+//  useMemo   -> visibleItems  : category filter + search + sort in ONE calculation
+//               quantityById  : how many of each dish is in the cart
+//  useCallback -> handleAdd, toggleFavorite, renderItem (stable function references)
 //  useEffect -> (1) "fetch" the menu once when the screen mounts   [ ]
-//               (2) re-filter when category or menu changes      [selectedCategory, menuItems]
-//               (3) update the header title with the item count  [filteredItems, isLoading]
+//               (2) (Q4 filter effect – replaced by useMemo in Q8)
+//               (3) update the header title with the item count  [visibleItems, isLoading]
 //               (4) auto-hide the "added" toast after 2 seconds  [toast]
 //               (5) clear the search debounce timer on unmount   [ ]
 //  useRef    -> searchInputRef   : the TextInput element (to call .focus())
@@ -16,11 +20,10 @@
 //               previousQueryRef : last saved search term (avoid duplicates)
 //               renderCount      : how many times this screen has rendered
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
   FlatList,
   ScrollView,
   TextInput,
@@ -35,6 +38,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import MenuSkeleton from '../components/MenuSkeleton';
+import MenuItemCard, { ENABLE_MEMO } from '../components/MenuItemCard';
 import { categories, fetchMenu } from '../data/menu';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -42,7 +46,12 @@ import { useCart } from '../context/CartContext';
 import { CART_ACTIONS } from '../reducers/cartReducer';
 import { radius, spacing } from '../theme/colors';
 
-const formatPrice = (value) => `Rs ${value.toLocaleString('en-PK')}`;
+const SORT_OPTIONS = [
+  { id: 'recommended', label: 'Recommended', icon: 'sparkles-outline' },
+  { id: 'priceAsc', label: 'Price: low to high', short: 'Price ↑', icon: 'trending-up-outline' },
+  { id: 'priceDesc', label: 'Price: high to low', short: 'Price ↓', icon: 'trending-down-outline' },
+  { id: 'nameAsc', label: 'Name: A to Z', short: 'A–Z', icon: 'text-outline' },
+];
 const SEARCH_DELAY = 400; // ms of "no typing" before the search is applied
 const MAX_RECENT = 5; // how many recent searches to remember
 const BACK_TO_TOP_OFFSET = 300; // px scrolled before the "Back to top" button appears
@@ -59,7 +68,8 @@ export default function MenuScreen({ navigation }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [filteredItems, setFilteredItems] = useState([]);
+  const [sortOrder, setSortOrder] = useState('recommended'); // Q8
+  const [favoriteIds, setFavoriteIds] = useState([]); // Q8: ids of favourite dishes
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [toast, setToast] = useState(null); // text of the "added" message
 
@@ -117,29 +127,50 @@ export default function MenuScreen({ navigation }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ---------------- Effect 2: filter by category + search ----------------
-  // Runs whenever selectedCategory, menuItems OR the debounced searchQuery changes.
-  // (In Q8 this state + effect is replaced by a single useMemo.)
-  useEffect(() => {
+  // ---------------- Q8: derived list with ONE useMemo ----------------
+  // The Q4 version stored `filteredItems` in state and updated it inside a
+  // useEffect. That caused an extra render every time (render -> effect ->
+  // setFilteredItems -> render again) and two copies of the same data that
+  // could get out of sync.
+  //
+  // WHY derived data should NOT be stored in state:
+  //  visibleItems can always be CALCULATED from state we already have
+  //  (menuItems, selectedCategory, searchQuery, sortOrder). Storing it again
+  //  would duplicate data. useMemo simply recalculates it during render, and
+  //  only when one of those four inputs changes; otherwise it reuses the cached list.
+  const visibleItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    setFilteredItems(
-      menuItems.filter((item) => {
-        const inCategory = selectedCategory === 'All' || item.category === selectedCategory;
-        const matchesSearch =
-          q === '' ||
-          item.name.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q);
-        return inCategory && matchesSearch;
-      }),
-    );
-  }, [selectedCategory, menuItems, searchQuery]);
+    const filtered = menuItems.filter((item) => {
+      const inCategory = selectedCategory === 'All' || item.category === selectedCategory;
+      const matchesSearch =
+        q === '' ||
+        item.name.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q);
+      return inCategory && matchesSearch;
+    });
+    // sort a COPY – never mutate the original array
+    const sorted = [...filtered];
+    if (sortOrder === 'priceAsc') sorted.sort((a, b) => a.price - b.price);
+    if (sortOrder === 'priceDesc') sorted.sort((a, b) => b.price - a.price);
+    if (sortOrder === 'nameAsc') sorted.sort((a, b) => a.name.localeCompare(b.name));
+    return sorted;
+  }, [menuItems, selectedCategory, searchQuery, sortOrder]);
+
+  // Map of dish id -> quantity in cart, rebuilt only when the cart items change
+  const quantityById = useMemo(() => {
+    const map = {};
+    cart.items.forEach((i) => {
+      map[i.id] = i.quantity;
+    });
+    return map;
+  }, [cart.items]);
 
   // ---------------- Effect 3: header title with item count ----------------
   useEffect(() => {
     navigation.setOptions({
-      title: isLoading || error ? 'Menu' : `Menu (${filteredItems.length} items)`,
+      title: isLoading || error ? 'Menu' : `Menu (${visibleItems.length} items)`,
     });
-  }, [navigation, filteredItems.length, isLoading, error]);
+  }, [navigation, visibleItems.length, isLoading, error]);
 
   // ---------------- Effect 4: auto-hide toast ----------------
   useEffect(() => {
@@ -226,14 +257,24 @@ export default function MenuScreen({ navigation }) {
       .finally(() => setIsRefreshing(false));
   };
 
-  // Q7: Add to Cart dispatches ADD_ITEM to the cart reducer
-  const onAdd = (item) => {
-    dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: item });
-    setToast(`${item.name} added to cart`);
-  };
+  // ---------------- Q8: stable handlers with useCallback ----------------
+  // useCallback returns the SAME function object on every render (until its
+  // dependencies change). Because MenuItemCard is wrapped in React.memo, a
+  // stable function prop means the card does not re-render needlessly.
+  // `dispatch` and state setters are already stable, so the deps stay tiny.
+  const handleAdd = useCallback(
+    (item) => {
+      dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: item }); // Q7 cart reducer
+      setToast(`${item.name} added to cart`);
+    },
+    [dispatch],
+  );
 
-  // How many of this dish are already in the cart (shown on the Add button)
-  const quantityInCart = (id) => cart.items.find((i) => i.id === id)?.quantity ?? 0;
+  // Favourites: ONE state array of ids. The functional update (prev => ...)
+  // means this function never needs to change, so its deps are [].
+  const toggleFavorite = useCallback((id) => {
+    setFavoriteIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }, []);
 
   const countFor = (categoryId) =>
     categoryId === 'All'
@@ -241,74 +282,21 @@ export default function MenuScreen({ navigation }) {
       : menuItems.filter((i) => i.category === categoryId).length;
 
   // ---------------- Render pieces ----------------
-  const renderItem = ({ item }) => {
-    const disabled = !item.isAvailable;
-    return (
-      <View style={[styles.card, disabled && styles.cardDisabled]}>
-        {/* Image with placeholder icon behind it (shows if the photo fails to load) */}
-        <View style={styles.imageWrap}>
-          <Ionicons
-            name="restaurant-outline"
-            size={28}
-            color={colors.textMuted}
-            style={styles.imageFallback}
-          />
-          <Image
-            source={{ uri: item.image }}
-            style={[styles.image, disabled && styles.imageDisabled]}
-          />
-          {item.isSpecial && (
-            <View style={styles.specialBadge}>
-              <Ionicons name="star" size={10} color={colors.white} />
-              <Text style={styles.specialText}>Daily Special</Text>
-            </View>
-          )}
-          {disabled && (
-            <View style={styles.soldOut}>
-              <Text style={styles.soldOutText}>Sold out</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.cardBody}>
-          <Text style={styles.name} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={styles.description} numberOfLines={2}>
-            {item.description}
-          </Text>
-          <View style={styles.metaRow}>
-            <Ionicons name="star" size={12} color={colors.accent} />
-            <Text style={styles.meta}>{item.rating.toFixed(1)}</Text>
-            <Text style={styles.metaDot}>•</Text>
-            <Ionicons name="time-outline" size={12} color={colors.textMuted} />
-            <Text style={styles.meta}>{item.prepTime} min</Text>
-          </View>
-
-          <View style={styles.priceRow}>
-            <Text style={[styles.price, disabled && styles.priceDisabled]}>
-              {formatPrice(item.price)}
-            </Text>
-            <TouchableOpacity
-              style={[styles.addButton, disabled && styles.addButtonDisabled]}
-              onPress={() => onAdd(item)}
-              disabled={disabled}
-              activeOpacity={0.8}
-            >
-              <Ionicons name={disabled ? 'close' : 'add'} size={16} color={colors.white} />
-              <Text style={styles.addText}>
-                {disabled
-                  ? 'N/A'
-                  : quantityInCart(item.id) > 0
-                    ? `Add · ${quantityInCart(item.id)}`
-                    : 'Add'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-  };
+  // renderItem is also memoised so FlatList receives a stable function.
+  // Each card gets only simple values for ITS dish, so when one heart is
+  // tapped, only that card's `isFavorite` prop changes.
+  const renderItem = useCallback(
+    ({ item }) => (
+      <MenuItemCard
+        item={item}
+        quantity={quantityById[item.id] ?? 0}
+        isFavorite={favoriteIds.includes(item.id)}
+        onAdd={ENABLE_MEMO ? handleAdd : (dish) => handleAdd(dish)}
+        onToggleFavorite={ENABLE_MEMO ? toggleFavorite : (id) => toggleFavorite(id)}
+      />
+    ),
+    [quantityById, favoriteIds, handleAdd, toggleFavorite],
+  );
 
   const ListHeader = (
     <View>
@@ -365,9 +353,46 @@ export default function MenuScreen({ navigation }) {
         })}
       </ScrollView>
 
-      <Text style={styles.sectionTitle}>
-        {selectedCategory === 'All' ? 'Full menu' : selectedCategory}
-      </Text>
+      {/* Q8: sort options */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.sortRow}
+      >
+        <Text style={styles.sortLabel}>Sort</Text>
+        {SORT_OPTIONS.map((o) => {
+          const active = sortOrder === o.id;
+          return (
+            <TouchableOpacity
+              key={o.id}
+              style={[styles.sortPill, active && styles.sortPillActive]}
+              onPress={() => setSortOrder(o.id)}
+              accessibilityLabel={`Sort by ${o.label}`}
+            >
+              <Ionicons
+                name={o.icon}
+                size={14}
+                color={active ? colors.primaryText : colors.textMuted}
+              />
+              <Text style={[styles.sortText, active && styles.sortTextActive]}>
+                {o.short ?? o.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionTitle}>
+          {selectedCategory === 'All' ? 'Full menu' : selectedCategory}
+        </Text>
+        {favoriteIds.length > 0 && (
+          <View style={styles.favCount}>
+            <Ionicons name="heart" size={12} color={colors.error} />
+            <Text style={styles.favCountText}>{favoriteIds.length}</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 
@@ -474,7 +499,7 @@ export default function MenuScreen({ navigation }) {
           scrollEventThrottle={16}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          data={filteredItems}
+          data={visibleItems}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           ListHeaderComponent={ListHeader}
@@ -607,81 +632,39 @@ const createStyles = (colors) =>
       marginBottom: spacing.sm + 4,
     },
 
-    // Card
-    card: {
-      flexDirection: 'row',
-      backgroundColor: colors.card,
-      borderRadius: radius.lg,
-      padding: 12,
-      marginHorizontal: spacing.md,
-      marginBottom: 14,
-      shadowColor: colors.shadow,
-      shadowOpacity: 0.07,
-      shadowRadius: 12,
-      shadowOffset: { width: 0, height: 4 },
-      elevation: 2,
-    },
-    cardDisabled: { opacity: 0.55 },
-    imageWrap: {
-      width: 104,
-      height: 104,
-      borderRadius: radius.md,
-      overflow: 'hidden',
-      backgroundColor: colors.muted,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    imageFallback: { position: 'absolute' },
-    image: { width: '100%', height: '100%' },
-    imageDisabled: { opacity: 0.5 },
-    specialBadge: {
-      position: 'absolute',
-      top: 6,
-      left: 6,
+    // Sort (Q8)
+    sortRow: { paddingHorizontal: spacing.md, gap: 8, alignItems: 'center', marginTop: 12 },
+    sortLabel: { fontSize: 13, fontWeight: '800', color: colors.textMuted, marginRight: 2 },
+    sortPill: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 3,
-      backgroundColor: colors.accent,
-      paddingHorizontal: 6,
-      paddingVertical: 3,
+      gap: 4,
+      paddingHorizontal: 11,
+      paddingVertical: 6,
       borderRadius: radius.pill,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
-    specialText: { color: colors.white, fontSize: 9, fontWeight: '800' },
-    soldOut: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: 'rgba(20,30,25,0.78)',
-      paddingVertical: 4,
-      alignItems: 'center',
-    },
-    soldOutText: { color: colors.white, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-    cardBody: { flex: 1, marginLeft: 12, justifyContent: 'space-between' },
-    name: { fontSize: 16, fontWeight: '800', color: colors.text },
-    description: { fontSize: 12.5, color: colors.textMuted, lineHeight: 17, marginTop: 2 },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
-    meta: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
-    metaDot: { color: colors.textMuted, marginHorizontal: 3 },
-    priceRow: {
+    sortPillActive: { borderColor: colors.primaryText, backgroundColor: colors.primarySoft },
+    sortText: { fontSize: 12.5, fontWeight: '700', color: colors.textMuted },
+    sortTextActive: { color: colors.primaryText },
+    sectionRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      marginTop: 6,
+      marginRight: spacing.md,
     },
-    price: { fontSize: 16, fontWeight: '800', color: colors.primaryText },
-    priceDisabled: { color: colors.textMuted },
-    addButton: {
+    favCount: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 2,
-      backgroundColor: colors.primary,
-      paddingHorizontal: 12,
-      paddingVertical: 7,
+      gap: 4,
+      backgroundColor: colors.errorSoft,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
       borderRadius: radius.pill,
+      marginTop: spacing.lg - 4,
     },
-    addButtonDisabled: { backgroundColor: '#9CA3AF' },
-    addText: { color: colors.white, fontWeight: '800', fontSize: 13 },
+    favCountText: { fontSize: 12, fontWeight: '800', color: colors.error },
 
     // Loading / empty / error
     loadingRow: {

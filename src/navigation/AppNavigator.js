@@ -6,7 +6,7 @@
 //   └── Main  -> Bottom Tabs       (when a user is logged in)
 //        ├── DashboardTab -> Stack -> DashboardScreen   (MANAGER ONLY)
 //        ├── MenuTab      -> Stack -> MenuScreen
-//        ├── CartTab      -> Stack -> CartScreen   (badge = items in cart, Q7)
+//        ├── CartTab      -> Stack -> CartScreen -> OrderSummaryScreen (badge = items in cart)
 //        └── ProfileTab   -> Stack -> ProfileScreen
 //
 // The Root stack shows Login OR Main depending on `user` from AuthContext.
@@ -25,6 +25,7 @@ import MenuScreen from '../screens/MenuScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CartScreen from '../screens/CartScreen';
+import OrderSummaryScreen from '../screens/OrderSummaryScreen';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { CartProvider, useCart } from '../context/CartContext';
@@ -92,6 +93,11 @@ function CartStackScreen() {
   return (
     <CartStack.Navigator screenOptions={stackOptions(colors)}>
       <CartStack.Screen name="Cart" component={CartScreen} options={{ title: 'My Cart' }} />
+      <CartStack.Screen
+        name="OrderSummary"
+        component={OrderSummaryScreen}
+        options={{ title: 'Order Summary', headerBackTitle: 'Cart' }}
+      />
     </CartStack.Navigator>
   );
 }

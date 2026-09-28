@@ -75,11 +75,8 @@ export default function CartScreen({ navigation }) {
       },
     ]);
 
-  const checkout = () =>
-    Alert.alert(
-      'Almost there!',
-      'The order summary with service charge and tax is added in the next update.',
-    );
+  // Q8: continue to the Order Summary screen (service charge, tax, grand total)
+  const checkout = () => navigation.navigate('OrderSummary');
 
   // ---------- Empty cart ----------
   if (items.length === 0) {
@@ -272,7 +269,7 @@ export default function CartScreen({ navigation }) {
           <Text style={styles.checkoutTotal}>{formatPrice(total)}</Text>
         </View>
         <TouchableOpacity style={styles.checkoutButton} onPress={checkout} activeOpacity={0.85}>
-          <Text style={styles.checkoutText}>Checkout</Text>
+          <Text style={styles.checkoutText}>Review order</Text>
           <Ionicons name="arrow-forward" size={18} color={colors.onPrimary} />
         </TouchableOpacity>
       </View>
