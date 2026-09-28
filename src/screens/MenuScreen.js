@@ -114,7 +114,7 @@ export default function MenuScreen({ route, navigation }) {
   };
 
   const onAdd = (item) => {
-    setToast(`${item.name} added to your order`); // real cart arrives in Q7
+    setToast(`${item.name} added to cart`); // real cart arrives in Q7
   };
 
   const countFor = (categoryId) =>
