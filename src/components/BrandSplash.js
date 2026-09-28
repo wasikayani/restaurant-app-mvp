@@ -164,7 +164,12 @@ export default function BrandSplash({ onFinish }) {
 // so it matches the app icon and the Expo Go loading screen.
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    // full-screen overlay (StyleSheet.absoluteFillObject was removed in RN 0.86)
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#047857',
     zIndex: 100,
     elevation: 100,
