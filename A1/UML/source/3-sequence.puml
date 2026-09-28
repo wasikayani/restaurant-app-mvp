@@ -1,0 +1,44 @@
+@startuml
+!include style.iuml
+title Sequence Diagram – Add to Cart → Place Order → Order Tracking
+autonumber
+skinparam responseMessageBelowArrow true
+
+actor Customer
+participant "MenuScreen" as Menu
+participant "CartContext\n(cartReducer)" as Cart
+participant "CartScreen /\nOrderSummaryScreen" as Summary
+participant "OrdersContext\n(ordersReducer)" as Orders
+participant "OrderTrackingScreen" as Track
+database "AsyncStorage" as Store
+
+Customer -> Menu : tap "Add" on a dish
+Menu -> Cart : dispatch(ADD_ITEM, item)
+Cart --> Menu : new state (quantity +1)
+Menu --> Customer : toast "Added" + tab badge
+
+Customer -> Summary : open Cart → "Review order"
+Summary -> Summary : useMemo(calculateTotals)\nsubtotal, discount, 5% service, 15% tax
+Customer -> Summary : choose Dine-in + table\n(or Takeaway + pickup time)
+Customer -> Summary : tap "Place order"
+Summary -> Summary : validate order type
+Summary -> Orders : dispatch(PLACE_ORDER, createOrder(...))\nstatus = Pending
+Orders -> Store : usePersistence → saveJSON(orders)
+Summary --> Customer : "Order placed!" popup
+Summary -> Cart : dispatch(CLEAR_CART)
+Summary -> Track : navigate(OrderTracking, { orderId })
+
+group setInterval every 1 s (while status is not final)
+  Track -> Track : elapsed = now − timestamp
+  Track -> Orders : dispatch(UPDATE_STATUS,\ngetStatusForElapsed(elapsed))
+  alt elapsed ≥ 10 s / 20 s / 30 s
+    Orders --> Track : status → Preparing / Ready / Served
+    Orders -> Store : saveJSON(orders)
+  else no change
+    Orders --> Track : same state (no re-render)
+  end
+end
+
+Track --> Customer : step progress + elapsed timer
+note over Track : cleanup: clearInterval when the screen\ncloses or status is Served / Cancelled
+@enduml

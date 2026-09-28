@@ -1,0 +1,80 @@
+@startuml
+!include style.iuml
+title Use Case Diagram – Green Fork Restaurant App
+left to right direction
+skinparam packageStyle rectangle
+skinparam nodesep 12
+skinparam ranksep 60
+
+actor "Customer" as C
+actor "Manager" as M
+
+rectangle "Green Fork App" {
+  package "Account (both roles)" {
+    usecase "Log in" as UC1
+    usecase "Sign up" as UC2
+    usecase "Validate\ncredentials" as UC1a
+    usecase "Toggle dark mode" as UC3
+    usecase "Log out" as UC4
+  }
+  package "Menu" {
+    usecase "Browse menu" as UC5
+    usecase "Filter by category" as UC6
+    usecase "Search dishes" as UC7
+    usecase "Sort dishes" as UC8
+    usecase "Mark favourite" as UC9
+  }
+  package "Cart & Orders" {
+    usecase "Add item to cart" as UC10
+    usecase "Manage cart\n(quantity, note)" as UC11
+    usecase "Apply promo code" as UC12
+    usecase "Place order\n(Dine-in / Takeaway)" as UC14
+    usecase "View order summary" as UC13
+    usecase "Track order live" as UC15
+    usecase "Cancel order" as UC16
+  }
+  package "Reservations" {
+    usecase "Reserve a table" as UC17
+    usecase "Check slot\navailability" as UC18
+    usecase "View / cancel\nmy reservations" as UC19
+  }
+  package "Management" {
+    usecase "Manage incoming orders\n(update status)" as UC20
+    usecase "Accept / decline\nreservations" as UC21
+    usecase "Manage menu\n(add, price, availability)" as UC22
+    usecase "Reset demo data" as UC23
+  }
+}
+
+C --> UC1
+C --> UC2
+C --> UC3
+C --> UC4
+C --> UC5
+C --> UC10
+C --> UC11
+C --> UC14
+C --> UC15
+C --> UC17
+C --> UC19
+
+UC1 ..> UC1a : <<include>>
+UC2 ..> UC1a : <<include>>
+UC6 .up.> UC5 : <<extend>>
+UC7 .up.> UC5 : <<extend>>
+UC8 .up.> UC5 : <<extend>>
+UC9 .up.> UC5 : <<extend>>
+UC12 ..> UC11 : <<extend>>
+UC14 ..> UC13 : <<include>>
+UC14 ..> UC15 : <<include>>
+UC16 ..> UC15 : <<extend>>
+UC17 ..> UC18 : <<include>>
+
+UC1 <-- M
+UC4 <-- M
+UC5 <-- M
+UC20 <-- M
+UC21 <-- M
+UC22 <-- M
+UC23 <-- M
+@enduml

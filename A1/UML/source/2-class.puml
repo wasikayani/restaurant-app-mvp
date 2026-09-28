@@ -1,0 +1,130 @@
+@startuml
+!include style.iuml
+title Class Diagram – Green Fork Domain Model
+skinparam linetype ortho
+hide empty members
+
+abstract class User {
+  - id : string
+  - fullName : string
+  - email : string
+  - password : string
+  - role : "customer" | "manager"
+  + login(email : string, password : string) : boolean
+  + logout() : void
+}
+
+class Customer {
+  + browseMenu() : MenuItem[]
+  + placeOrder(cart : Cart, type : OrderType) : Order
+  + reserveTable(date : string, time : string, partySize : number) : Reservation
+  + cancelReservation(id : string) : void
+}
+
+class Manager {
+  + updateOrderStatus(orderId : string, status : OrderStatus) : void
+  + reviewReservation(id : string, accept : boolean) : void
+  + addMenuItem(item : MenuItem) : void
+  + updatePrice(itemId : string, price : number) : void
+  + toggleAvailability(itemId : string) : void
+}
+
+class Category {
+  - id : string
+  - label : string
+  - icon : string
+}
+
+class MenuItem {
+  - id : string
+  - name : string
+  - description : string
+  - price : number
+  - image : string
+  - isSpecial : boolean
+  - isAvailable : boolean
+  - rating : number
+  - prepTime : number
+}
+
+class Cart {
+  - promoCode : string | null
+  - discountPercent : number
+  + addItem(item : MenuItem) : void
+  + removeItem(itemId : string) : void
+  + applyPromo(code : string) : boolean
+  + getSubtotal() : number
+  + clear() : void
+}
+
+class CartItem {
+  - quantity : number
+  - note : string
+  + lineTotal() : number
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+}
+
+enum OrderStatus {
+  Pending
+  Preparing
+  Ready
+  Served
+  Cancelled
+}
+
+class Order {
+  - id : string
+  - subtotal : number
+  - discount : number
+  - serviceCharge : number
+  - salesTax : number
+  - total : number
+  - type : OrderType
+  - pickupTime : string | null
+  - status : OrderStatus
+  - timestamp : number
+  + advanceStatus() : void
+  + cancel() : boolean
+  + elapsedSeconds() : number
+}
+
+class Table {
+  - id : string
+  - number : number
+  - seats : number
+  - area : string
+}
+
+class Reservation {
+  - id : string
+  - date : string
+  - time : string
+  - partySize : number
+  - name : string
+  - phone : string
+  - note : string
+  - status : "Pending" | "Confirmed" | "Declined" | "Cancelled"
+  + cancel() : void
+}
+
+User <|-- Customer
+User <|-- Manager
+
+Category "1" -- "0..*" MenuItem : groups >
+Customer "1" *-- "1" Cart : owns >
+Cart "1" *-- "0..*" CartItem : contains >
+CartItem "0..*" --> "1" MenuItem : refers to >
+Customer "1" -- "0..*" Order : places >
+Order "1" *-- "1..*" CartItem : items >
+Order "0..*" --> "0..1" Table : served at >
+Order ..> OrderType
+Order ..> OrderStatus
+Customer "1" -- "0..*" Reservation : makes >
+Reservation "0..*" --> "1" Table : books >
+Manager "1" -- "0..*" Order : manages >
+Manager "1" -- "0..*" MenuItem : edits >
+@enduml

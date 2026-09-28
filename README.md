@@ -1,7 +1,12 @@
 # Green Fork – Restaurant App MVP
 
-**Developed by:** Muhammad Wasim
-**Course:** Mobile Application Development – Assignment 1 (Fall 2026)
+| | |
+|---|---|
+| **Student** | **Muhammad Wasim** |
+| **Registration No.** | **9513** |
+| **Course** | Mobile Application Development |
+| **Assignment** | Assignment 1 – Restaurant App MVP (Frontend Only, React Native) |
+| **Semester** | Fall 2026 |
 
 A frontend-only React Native (Expo) prototype of a restaurant app. Customers can browse the menu, search, favourite dishes, build a cart with promo codes, place Dine-in or Takeaway orders and follow them live, and reserve a table. Managers run the restaurant from a dashboard: incoming orders, reservation approvals and menu management. The app opens with an animated Green Fork launch screen.
 There is no backend, no external API and no state-management library. All data is mock data held in React state and Context, and orders, reservations and menu edits are saved on the phone with AsyncStorage.
@@ -58,6 +63,7 @@ New accounts can also be created on the Sign Up tab. They last only while the ap
 
 ```
 restaurant-app-mvp/
+├── A1/                 SRS.pdf (Q1) and UML/ diagrams (Q2)
 ├── App.js              providers (Theme, Auth, Menu, Reservations, Orders) + navigator + launch/loading screen
 ├── assets/             app icon, splash icon and brand logo layers
 ├── __tests__/          Jest unit tests (cart reducer, order totals, reservation rules, orders reducer)
@@ -74,6 +80,21 @@ restaurant-app-mvp/
     ├── theme/          light and dark colour palettes
     └── utils/          pure helpers (order totals, reservation rules, AsyncStorage wrapper)
 ```
+
+---
+
+## Assignment documents (Q1 and Q2)
+
+| Question | File |
+|---|---|
+| Q1 – Software Requirements Specification | [A1/SRS.pdf](A1/SRS.pdf) |
+| Q2 – Use Case diagram | [A1/UML/1-use-case.png](A1/UML/1-use-case.png) |
+| Q2 – Class diagram | [A1/UML/2-class.png](A1/UML/2-class.png) |
+| Q2 – Sequence diagram (Add to Cart → Order Tracking) | [A1/UML/3-sequence.png](A1/UML/3-sequence.png) |
+| Q2 – State Machine diagram (order status) | [A1/UML/4-state-machine.png](A1/UML/4-state-machine.png) |
+| Q2 – Component diagram | [A1/UML/5-component.png](A1/UML/5-component.png) |
+
+The diagrams were written in PlantUML; the editable sources are in `A1/UML/source/`.
 
 ---
 
@@ -253,6 +274,13 @@ Mock bookings are dated relative to today, so the demo always works:
 | Party size **1–12** | the guest stepper stops at the limits |
 | Phone must be **03XX-XXXXXXX** | the dash is added automatically; wrong numbers show an error |
 | Cancelled bookings free the table again | covered in `__tests__/reservationRules.test.js` |
+
+**Rules of Hooks followed in the custom hooks (`useForm`, `useDebounce`, `useReservation`, `usePersistence`):**
+
+1. Every custom hook name starts with `use`, so React and ESLint treat it as a hook.
+2. Hooks are called only at the top level of a component or another hook – never inside loops, conditions or nested functions – so they run in the same order on every render.
+3. Hooks are called only from React function components or other custom hooks, never from plain JavaScript functions.
+4. Custom hooks return data and functions, not JSX. The screens stay "UI only" and the logic lives in the hook.
 
 Reservation rules are covered by 11 tests in `__tests__/reservationRules.test.js`. (In PowerShell use `npm.cmd test`.)
 

@@ -1,0 +1,29 @@
+@startuml
+!include style.iuml
+title State Machine Diagram – Order Status
+hide empty description
+
+[*] --> Pending : customer places order\n/ createOrder(), timestamp = now
+
+state Pending : entry / show "Order received"
+state Preparing : entry / show "Being prepared"
+state Ready : entry / show "Ready" (pickup or table)
+state Served : entry / stop timer
+state Cancelled : entry / stop timer
+
+Pending --> Preparing : after 10 s\nor manager "Start preparing"
+Preparing --> Ready : after 20 s\nor manager "Mark ready"
+Ready --> Served : after 30 s\nor manager "Mark served"
+
+Pending --> Cancelled : customer or manager cancels
+Preparing --> Cancelled : customer or manager cancels
+
+Served --> [*]
+Cancelled --> [*]
+
+note right of Ready
+  Status only moves FORWARD.
+  The reducer ignores backward
+  or repeated updates.
+end note
+@enduml

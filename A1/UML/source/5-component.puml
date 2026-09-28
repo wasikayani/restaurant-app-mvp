@@ -1,0 +1,86 @@
+@startuml
+!include style.iuml
+title Component Diagram – App Architecture
+skinparam componentStyle rectangle
+skinparam nodesep 25
+skinparam ranksep 55
+
+package "App.js" as AppPkg {
+  [BrandSplash\n(launch + loading screen)] as Splash
+  [AppNavigator\nroot stack · bottom tabs · nested stacks] as Nav
+}
+
+package "Screens" {
+  [LoginScreen] as S1
+  [MenuScreen] as S2
+  [CartScreen\nOrderSummaryScreen] as S3
+  [OrderTrackingScreen\nMyOrdersScreen] as S5
+  [ReservationScreen\nMyReservationsScreen] as S7
+  [ProfileScreen] as S9
+  [DashboardScreen\nOrders · Bookings · Menu panels] as S10
+}
+
+package "Custom Hooks" {
+  [useForm] as UF
+  [useDebounce] as UD
+  [useReservation] as UR
+  [usePersistence] as UP
+}
+
+package "Context Providers (global state)" {
+  [AuthProvider\nuseAuth] as AuthP
+  [ThemeProvider\nuseTheme] as ThemeP
+  [CartProvider\nuseCart] as CartP
+  [OrdersProvider\nuseOrders] as OrdP
+  [MenuProvider\nuseMenu] as MenuP
+  [ReservationProvider\nuseReservationContext] as ResP
+}
+
+package "Reducers (pure functions)" {
+  [cartReducer] as CartR
+  [ordersReducer] as OrdR
+}
+
+package "Data & Utils" {
+  [mock data\nusers · menu · tables · reservations] as Data
+  [utils\norderTotals · reservationRules · storage] as Utils
+}
+
+database "AsyncStorage\n(on the phone)" as Store
+
+Nav --> S1
+Nav --> S2
+Nav --> S3
+Nav --> S5
+Nav --> S7
+Nav --> S9
+Nav --> S10
+
+S1 --> UF
+S1 --> AuthP
+S2 --> UD
+S2 --> MenuP
+S2 --> CartP
+S3 --> CartP
+S3 --> OrdP
+S5 --> OrdP
+S7 --> UR
+S9 --> ThemeP
+S10 --> OrdP
+S10 --> ResP
+S10 --> MenuP
+
+UR --> UF
+UR --> ResP
+
+CartP --> CartR
+OrdP --> OrdR
+OrdP --> UP
+MenuP --> UP
+ResP --> UP
+MenuP --> Data
+ResP --> Data
+UR --> Utils
+UP --> Store
+Splash ..> UP : waits for\nhydration
+@enduml
