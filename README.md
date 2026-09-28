@@ -279,7 +279,7 @@ Run `npm test`: 4 test suites, **40 tests** (11 for the orders reducer), all pas
 
 ## Demo video
 
-▶️ **Watch the demo (under 3 minutes):** https://youtu.be/FckzcB1fk6k
+▶️ **Watch the demo:** https://youtu.be/FckzcB1fk6k
 
 [![Green Fork demo video](https://img.youtube.com/vi/FckzcB1fk6k/hqdefault.jpg)](https://youtu.be/FckzcB1fk6k)
 
