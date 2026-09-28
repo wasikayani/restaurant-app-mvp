@@ -1,5 +1,8 @@
 # Green Fork – Restaurant App MVP
 
+**Developed by:** Muhammad Wasim
+**Course:** Mobile Application Development – Assignment 1 (Fall 2026)
+
 A frontend-only React Native (Expo) prototype of a restaurant app. Customers can browse the menu, book a table and place an order. Managers can handle orders, reservations and the menu.
 Assignment 1 – Fall 2026. No backend, no external API and no state-management library: all data is mock data held in React state.
 
