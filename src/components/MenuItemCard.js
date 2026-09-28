@@ -17,7 +17,7 @@ import { radius, spacing } from '../theme/colors';
 
 // Set to false to see the "before optimisation" behaviour for the Q8 screenshots:
 // every card re-renders when any heart is tapped.
-export const ENABLE_MEMO = false;
+export const ENABLE_MEMO = true;
 
 const formatPrice = (value) => `Rs ${value.toLocaleString('en-PK')}`;
 
