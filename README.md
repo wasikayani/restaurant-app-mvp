@@ -153,6 +153,16 @@ restaurant-app-mvp/
 |---|---|
 | <img src="screenshots/q9-disable-slots-highlighted.jpeg" width="240" alt="Disabled time slots"> | <img src="screenshots/q9-my-reservations.jpeg" width="240" alt="My reservations"> |
 
+### Q10 – Orders, live tracking and Manager Dashboard
+
+| Dine-in or Takeaway | Live order tracking | Manager: incoming orders |
+|---|---|---|
+| <img src="screenshots/q10-order-type.jpeg" width="220" alt="Order type selection"> | <img src="screenshots/q10-tracking.jpeg" width="220" alt="Order tracking"> | <img src="screenshots/q10-dashboard-orders.jpeg" width="220" alt="Dashboard orders"> |
+
+| Manager: reservations | Manager: menu management | Manager: add a new dish |
+|---|---|---|
+| <img src="screenshots/q10-dashboard-bookings.jpeg" width="220" alt="Dashboard reservations"> | <img src="screenshots/q10-menu-management.jpeg" width="220" alt="Menu management"> | <img src="screenshots/q10-newitem-menu.jpeg" width="220" alt="Add new dish"> |
+
 ### Unit tests
 
 <img src="screenshots/npm-test.jpeg" width="600" alt="npm test output">
