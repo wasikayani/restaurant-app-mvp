@@ -39,3 +39,6 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Server secrets (never commit real values; .env.example is committed instead)
+.env
