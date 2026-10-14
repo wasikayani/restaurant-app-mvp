@@ -3,6 +3,7 @@
 // Q2: basic setup – environment variables, middleware, health check,
 //     404 handler for unknown routes and a JSON error handler.
 // Q3: connects to MongoDB before the server starts listening.
+// Q4: menu API routes (/api/menu).
 
 require('dotenv').config({ quiet: true }); // loads PORT, MONGO_URI ... from the .env file into process.env
 
@@ -23,6 +24,9 @@ app.use(express.json()); // read JSON request bodies into req.body
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
+
+// Q4: every URL starting with /api/menu is handled by the menu routes file
+app.use('/api/menu', require('./routes/menuRoutes'));
 
 // ---------- 404: any URL that did not match a route above ----------
 app.use((req, res) => {
