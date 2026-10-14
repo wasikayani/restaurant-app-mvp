@@ -2,12 +2,14 @@
 // Green Fork API – the Express server for the Restaurant App (Assignment 2).
 // Q2: basic setup – environment variables, middleware, health check,
 //     404 handler for unknown routes and a JSON error handler.
+// Q3: connects to MongoDB before the server starts listening.
 
 require('dotenv').config({ quiet: true }); // loads PORT, MONGO_URI ... from the .env file into process.env
 
 const os = require('os');
 const express = require('express');
 const cors = require('cors');
+const connectDB = require('./config/db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -45,8 +47,11 @@ function getLocalIp() {
   return 'localhost';
 }
 
+// Connect to the database first, then start listening for requests.
 // '0.0.0.0' = accept requests from other devices on the same Wi-Fi, not only this laptop
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`From your phone open: http://${getLocalIp()}:${PORT}/api/health`);
+connectDB().then(() => {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`From your phone open: http://${getLocalIp()}:${PORT}/api/health`);
+  });
 });
