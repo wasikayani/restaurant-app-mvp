@@ -4,19 +4,20 @@
 // Question 10 – three tabs, all working on SHARED app-wide state:
 //   Orders        -> OrdersContext (useReducer)   move orders forward / cancel
 //   Reservations  -> ReservationContext           accept / decline bookings
-//   Menu          -> MenuContext                  add dish, edit price, toggle availability
-// Because customers read the same contexts, every change shows up for them
-// immediately, and AsyncStorage keeps it after the app is closed.
+//   Menu          -> SERVER (A2 Q6)               add dish, edit price, toggle availability
+// Orders and reservations: customers read the same contexts (moved to the server in Q7).
+// Menu (A2 Q6): loaded with useApi('/api/menu'); MenuPanel saves changes through the
+// protected API and calls refetch() afterwards. Pull down to reload everything.
 
 import { useMemo, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, RefreshControl, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useOrders } from '../context/OrdersContext';
 import { useReservationContext } from '../context/ReservationContext';
-import { useMenu } from '../context/MenuContext';
+import useApi from '../hooks/useApi';
 import { isFinalStatus } from '../reducers/ordersReducer';
 import OrdersPanel from '../components/dashboard/OrdersPanel';
 import ReservationsPanel from '../components/dashboard/ReservationsPanel';
@@ -38,7 +39,17 @@ export default function DashboardScreen() {
   const styles = createStyles(colors);
   const { orders } = useOrders();
   const { reservations } = useReservationContext();
-  const { menu } = useMenu();
+  // A2 Q6: the real menu from MongoDB (custom hook – also used in MenuScreen)
+  const { data: menuData, loading: menuLoading, error: menuError, refetch: refetchMenu } =
+    useApi('/api/menu');
+  const menu = useMemo(() => menuData ?? [], [menuData]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    await refetchMenu({ silent: true });
+    setIsRefreshing(false);
+  };
   const [activeTab, setActiveTab] = useState('orders');
 
   // Live numbers for the overview cards (derived data -> useMemo)
@@ -66,6 +77,14 @@ export default function DashboardScreen() {
       style={styles.container}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={onRefresh}
+          tintColor={colors.primaryText}
+          colors={[colors.primary]}
+        />
+      }
     >
       <StatusBar style="light" />
       <Text style={styles.hello}>Welcome back, {user?.fullName?.split(' ')[0]} 👋</Text>
@@ -111,7 +130,9 @@ export default function DashboardScreen() {
 
       {activeTab === 'orders' && <OrdersPanel />}
       {activeTab === 'reservations' && <ReservationsPanel />}
-      {activeTab === 'menu' && <MenuPanel />}
+      {activeTab === 'menu' && (
+        <MenuPanel menu={menu} loading={menuLoading} error={menuError} onChanged={refetchMenu} />
+      )}
     </ScrollView>
   );
 }

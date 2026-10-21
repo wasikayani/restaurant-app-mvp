@@ -1,5 +1,7 @@
 // src/components/dashboard/AddDishModal.js
 // Question 10 – form to add a new dish. Reuses the custom useForm hook from Q9.
+// A2 Q6: MenuPanel sends the dish to the server (POST /api/menu). The A1 checks below
+// still run first, so the user sees mistakes before anything is sent.
 
 import { useState } from 'react';
 import {
@@ -17,14 +19,14 @@ import { Ionicons } from '@expo/vector-icons';
 import FormInput from '../FormInput';
 import useForm from '../../hooks/useForm';
 import { useTheme } from '../../context/ThemeContext';
-import { categories, menuItems as mockMenu } from '../../data/menu';
+import { categories, DEFAULT_IMAGES } from '../../data/categories';
 import { radius, spacing } from '../../theme/colors';
 
 const EMPTY_DISH = { name: '', description: '', price: '', category: 'Mains', image: '' };
 const CATEGORY_IDS = categories.map((c) => (typeof c === 'string' ? c : c.id)).filter((c) => c !== 'All');
 
-// Default photo per category (taken from the existing menu) when no URL is given
-const defaultImageFor = (category) => mockMenu.find((m) => m.category === category)?.image ?? mockMenu[0].image;
+// Default photo per category when no URL is given
+const defaultImageFor = (category) => DEFAULT_IMAGES[category] ?? DEFAULT_IMAGES.Mains;
 
 // Module-level (stable) validate function, as useForm expects
 function validateDish(values) {

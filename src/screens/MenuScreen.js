@@ -3,14 +3,20 @@
 // Question 5 – Search and Scroll Controls (hook: useRef)
 // Question 8 – Performance (hooks: useMemo, useCallback + React.memo on MenuItemCard)
 // Question 9 – the manual Q5 debounce is replaced by the useDebounce custom hook
+// Assignment 2 – Q6: the menu now comes from the server. The fake fetchMenu()
+//   and the shared MenuContext were replaced by the useApi custom hook:
+//     const { data, loading, error, refetch } = useApi('/api/menu');
+//   useApi's useEffect calls GET /api/menu when the screen opens. Loading skeleton,
+//   error screen + Retry, and pull-to-refresh all still work, now with real data.
 //
 // What each hook does here:
-//  useState  -> menuItems, isLoading, error, selectedCategory, sortOrder,
+//  useApi    -> menuItems (data), isLoading, error, refetch      (A2 Q6)
+//  useState  -> selectedCategory, sortOrder,
 //               favoriteIds, isRefreshing, toast
 //  useMemo   -> visibleItems  : category filter + search + sort in ONE calculation
 //               quantityById  : how many of each dish is in the cart
 //  useCallback -> handleAdd, toggleFavorite, renderItem (stable function references)
-//  useEffect -> (1) "fetch" the menu once when the screen mounts   [ ]
+//  useEffect -> (1) load the menu once when the screen mounts – now inside useApi
 //               (2) (Q4 filter effect – replaced by useMemo in Q8)
 //               (3) update the header title with the item count  [visibleItems, isLoading]
 //               (4) auto-hide the "added" toast after 2 seconds  [toast]
@@ -41,11 +47,11 @@ import { Ionicons } from '@expo/vector-icons';
 import MenuSkeleton from '../components/MenuSkeleton';
 import MenuItemCard, { ENABLE_MEMO } from '../components/MenuItemCard';
 import useDebounce from '../hooks/useDebounce';
-import { categories, fetchMenu } from '../data/menu';
+import { categories } from '../data/categories';
+import useApi from '../hooks/useApi';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { useMenu } from '../context/MenuContext';
 import { CART_ACTIONS } from '../reducers/cartReducer';
 import { radius, spacing } from '../theme/colors';
 
@@ -65,12 +71,11 @@ export default function MenuScreen({ navigation }) {
   const styles = createStyles(colors);
   const { user } = useAuth(); // Q6: logged-in user comes from AuthContext
   const { state: cart, dispatch } = useCart(); // Q7: shared cart (useReducer)
-  const { menu: sharedMenu } = useMenu(); // Q10: menu the manager can edit
 
   // ---------------- State ----------------
-  const [menuItems, setMenuItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // A2 Q6: GET /api/menu through the custom hook (replaces menuItems/isLoading/error state)
+  const { data, loading: isLoading, error, refetch } = useApi('/api/menu');
+  const menuItems = useMemo(() => data ?? [], [data]); // [] until the first answer arrives
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [sortOrder, setSortOrder] = useState('recommended'); // Q8
   const [favoriteIds, setFavoriteIds] = useState([]); // Q8: ids of favourite dishes
@@ -108,39 +113,8 @@ export default function MenuScreen({ navigation }) {
   const renderCount = useRef(0);
   renderCount.current += 1;
 
-  // Q10: always "fetch" the latest shared menu (a ref avoids a stale value
-  // inside the load effect, which only runs once).
-  const latestMenuRef = useRef(sharedMenu);
-  useEffect(() => {
-    latestMenuRef.current = sharedMenu;
-  }, [sharedMenu]);
-
-  // Starts a fake request and returns its cancel function
-  const loadMenu = () => {
-    setIsLoading(true);
-    setError(null);
-    const request = fetchMenu(latestMenuRef.current);
-    request.promise
-      .then((items) => {
-        setMenuItems(items);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message);
-        setIsLoading(false);
-      });
-    return request.cancel;
-  };
-
-  // ---------------- Effect 1: load menu on mount ----------------
-  // Empty dependency array [] = run ONCE, after the first render.
-  // The returned cleanup clears the 1.5s timer if the user leaves the screen
-  // before it finishes, so no state update happens on an unmounted screen.
-  useEffect(() => {
-    const cancel = loadMenu();
-    return cancel; // cleanup
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Retry button on the error screen: load again with the loading skeleton
+  const loadMenu = () => refetch();
 
   // ---------------- Q8: derived list with ONE useMemo ----------------
   // The Q4 version stored `filteredItems` in state and updated it inside a
@@ -242,29 +216,18 @@ export default function MenuScreen({ navigation }) {
   const scrollToTop = () => listRef.current?.scrollToOffset({ offset: 0, animated: true });
 
   // ---------------- Handlers ----------------
-  // ---------------- Q10: live manager edits ----------------
-  // When the manager adds a dish, changes a price or toggles availability,
-  // the shared menu changes and the loaded list is updated immediately.
-  // (Skipped while the first load is still running or has failed.)
-  useEffect(() => {
-    setMenuItems((prev) => (prev.length === 0 ? prev : sharedMenu.map((item) => ({ ...item }))));
-  }, [sharedMenu]);
-
   const selectCategory = (id) => {
     LayoutAnimation.configureNext(LayoutAnimation.create(220, 'easeInEaseOut', 'opacity'));
     setSelectedCategory(id);
   };
 
-  // Pull to refresh: keep the current list visible while reloading
-  const onRefresh = () => {
+  // Pull to refresh: keep the current list visible while asking the server again.
+  // This is how a customer sees a new price the manager just saved on another phone.
+  const onRefresh = async () => {
     setIsRefreshing(true);
-    fetchMenu(latestMenuRef.current)
-      .promise.then((items) => {
-        setMenuItems(items);
-        setError(null);
-      })
-      .catch(() => Alert.alert('Refresh failed', 'Could not refresh the menu. Please try again.'))
-      .finally(() => setIsRefreshing(false));
+    const ok = await refetch({ silent: true });
+    setIsRefreshing(false);
+    if (!ok) Alert.alert('Refresh failed', 'Could not reach the server. Please try again.');
   };
 
   // ---------------- Q8: stable handlers with useCallback ----------------

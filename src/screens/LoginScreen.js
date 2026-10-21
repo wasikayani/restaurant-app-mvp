@@ -6,7 +6,7 @@
 //   form          -> all controlled input values
 //   errors        -> { fieldName: 'message' }  (cleared as soon as that field is edited)
 //   showPassword  -> eye icon toggle
-//   isSubmitting  -> true during the fake 1 second "network" call
+//   isSubmitting  -> true while waiting for the server (A2 Q6)
 //   success       -> data for the animated confirmation popup (null = hidden)
 //
 // Animations use React Native's built-in Animated + LayoutAnimation APIs
@@ -20,6 +20,15 @@
 // (login(user) from useAuth) instead of passing it through navigation params.
 // AppNavigator watches `user` and shows the right tabs automatically:
 // Customer -> Menu tab, Manager -> Dashboard tab.
+//
+// Assignment 2 – Q6: login and signup now call the real server:
+//   POST /api/auth/login     { email, password }        -> { _id, name, email, role, token }
+//   POST /api/auth/register  { name, email, password }  -> same (new customer)
+// The server checks the password (bcrypt) and sends a JWT token. Wrong password,
+// duplicate email etc. come back as errors with the server's message, shown in an Alert.
+// The A1 validation (email format, password rule, matching passwords) is still done
+// here first, so obviously wrong input never has to travel to the server.
+// The role selector was removed from signup: the server always creates a customer.
 
 import { useState } from 'react';
 import {
@@ -43,7 +52,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import FormInput from '../components/FormInput';
 import SuccessModal, { SUCCESS_DURATION } from '../components/SuccessModal';
-import { findUser, emailExists, addUser } from '../data/users';
+import { request } from '../api/client';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import useForm from '../hooks/useForm';
@@ -60,7 +69,6 @@ const EMPTY_FORM = {
   email: '',
   password: '',
   confirmPassword: '',
-  role: 'customer',
 };
 
 // Simple, readable email check: something@something.something
@@ -163,43 +171,43 @@ export default function LoginScreen() {
     handleSubmit(submitValidForm, playShake);
   };
 
-  const submitValidForm = () => {
+  // Sends the (already validated) form to the server
+  const submitValidForm = async () => {
     setIsSubmitting(true);
-
-    // Pretend we are calling a server: wait 1 second
-    setTimeout(() => {
+    try {
       if (isSignup) {
-        if (emailExists(form.email)) {
-          setIsSubmitting(false);
-          Alert.alert('Signup failed', 'An account with this email already exists. Please log in.');
-          return;
-        }
-        const newUser = addUser(form);
+        const data = await request('/api/auth/register', {
+          method: 'POST',
+          body: { name: form.fullName.trim(), email: form.email.trim(), password: form.password },
+        });
         setIsSubmitting(false);
-        const roleLabel = newUser.role === 'manager' ? 'Manager' : 'Customer';
         showSuccessThenNavigate(
-          newUser,
+          data,
           'Account created!',
-          `${newUser.fullName} is now registered as a ${roleLabel}. Welcome to Green Fork!`,
+          `${data.name} is now registered as a Customer. Welcome to Green Fork!`,
         );
       } else {
-        const user = findUser(form.email, form.password);
+        const data = await request('/api/auth/login', {
+          method: 'POST',
+          body: { email: form.email.trim(), password: form.password },
+        });
         setIsSubmitting(false);
-        if (!user) {
-          playShake();
-          Alert.alert('Login failed', 'Incorrect email or password. Please try again.');
-          return;
-        }
-        const firstName = user.fullName.split(' ')[0];
+        const firstName = data.name.split(' ')[0];
         showSuccessThenNavigate(
-          user,
+          data,
           `Welcome back, ${firstName}!`,
-          user.role === 'manager'
+          data.role === 'manager'
             ? 'Logged in successfully. Opening your dashboard…'
             : 'Logged in successfully. Today’s specials are waiting.',
         );
       }
-    }, 1000);
+    } catch (err) {
+      // err.message is the server's message, e.g. "Invalid email or password"
+      // or "An account with this email already exists" (409)
+      setIsSubmitting(false);
+      playShake();
+      Alert.alert(isSignup ? 'Signup failed' : 'Login failed', err.message);
+    }
   };
 
   return (
@@ -318,33 +326,6 @@ export default function LoginScreen() {
                   onChangeText={(t) => handleChange('confirmPassword', t)}
                   error={errors.confirmPassword}
                 />
-
-                {/* Role selector */}
-                <Text style={styles.label}>I am a</Text>
-                <View style={styles.roleRow}>
-                  {[
-                    { value: 'customer', label: 'Customer', icon: 'fast-food-outline' },
-                    { value: 'manager', label: 'Manager', icon: 'briefcase-outline' },
-                  ].map((r) => {
-                    const active = form.role === r.value;
-                    return (
-                      <TouchableOpacity
-                        key={r.value}
-                        style={[styles.roleCard, active && styles.roleCardActive]}
-                        onPress={() => handleChange('role', r.value)}
-                      >
-                        <Ionicons
-                          name={r.icon}
-                          size={22}
-                          color={active ? colors.primaryText : colors.textMuted}
-                        />
-                        <Text style={[styles.roleText, active && styles.roleTextActive]}>
-                          {r.label}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
               </>
             )}
           </Animated.View>
@@ -439,21 +420,6 @@ const createStyles = (colors) =>
     segmentTextActive: { color: colors.white },
     title: { fontSize: 24, fontWeight: '800', color: colors.text },
     subtitle: { fontSize: 14, color: colors.textMuted, marginTop: 4, marginBottom: spacing.lg },
-    label: { fontSize: 14, fontWeight: '600', color: colors.text, marginBottom: spacing.sm },
-    roleRow: { flexDirection: 'row', gap: 12, marginBottom: spacing.lg },
-    roleCard: {
-      flex: 1,
-      alignItems: 'center',
-      paddingVertical: 14,
-      borderRadius: radius.md,
-      borderWidth: 1.5,
-      borderColor: colors.border,
-      backgroundColor: colors.card,
-      gap: 6,
-    },
-    roleCardActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-    roleText: { fontWeight: '600', color: colors.textMuted },
-    roleTextActive: { color: colors.primaryText },
     button: {
       backgroundColor: colors.primary,
       height: 54,

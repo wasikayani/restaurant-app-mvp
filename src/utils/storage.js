@@ -6,10 +6,11 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// A2 Q6: the menu is no longer saved on the phone – it lives in MongoDB on the server.
+// (The login token is saved by AuthContext under '@greenfork/auth'.)
 export const STORAGE_KEYS = {
   orders: '@greenfork/orders',
   reservations: '@greenfork/reservations',
-  menu: '@greenfork/menu',
 };
 
 // Returns the saved value, or `null` when nothing is saved yet

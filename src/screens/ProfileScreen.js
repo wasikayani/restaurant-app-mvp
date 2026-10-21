@@ -11,7 +11,6 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useOrders } from '../context/OrdersContext';
 import { useReservationContext } from '../context/ReservationContext';
-import { useMenu } from '../context/MenuContext';
 import { ORDER_ACTIONS } from '../reducers/ordersReducer';
 import { getInitials } from '../components/AccountMenu';
 import { radius, spacing } from '../theme/colors';
@@ -23,14 +22,14 @@ export default function ProfileScreen() {
   const isManager = user?.role === 'manager';
   const { dispatch: ordersDispatch } = useOrders();
   const { resetReservations } = useReservationContext();
-  const { resetMenu } = useMenu();
 
   // Q10 (manager only): go back to the original mock data. The new values are
   // saved to AsyncStorage automatically by usePersistence.
+  // A2 Q6: the menu lives on the server now – to reset it, run `npm run seed` in /server.
   const confirmReset = () =>
     Alert.alert(
       'Reset demo data?',
-      'All orders are deleted, reservations and the menu go back to the original data.',
+      'All orders are deleted and reservations go back to the original data. (To reset the menu, run npm run seed on the server.)',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -39,7 +38,6 @@ export default function ProfileScreen() {
           onPress: () => {
             ordersDispatch({ type: ORDER_ACTIONS.RESET });
             resetReservations();
-            resetMenu();
           },
         },
       ],
