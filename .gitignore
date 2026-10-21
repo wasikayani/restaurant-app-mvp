@@ -42,3 +42,6 @@ yarn-error.*
 
 # Server secrets (never commit real values; .env.example is committed instead)
 .env
+
+# Editor settings (personal, not part of the project)
+.vscode/

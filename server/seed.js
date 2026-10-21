@@ -1,5 +1,6 @@
 // server/seed.js
 // Q3: fills the database with the A1 mock data.  Run:  npm run seed
+// Q5: User.create runs the password-hashing hook in models/User.js, so seed users are stored hashed.
 // 1. connect  2. empty every collection  3. insert users, menu items, tables  4. disconnect
 
 require('dotenv').config({ quiet: true });
@@ -33,7 +34,7 @@ async function seed() {
   const createdItems = await MenuItem.insertMany(menuItems);
   const createdTables = await Table.insertMany(tables);
 
-  console.log(`Inserted ${createdUsers.length} users`);
+  console.log(`Inserted ${createdUsers.length} users (passwords hashed)`);
   console.log(`Inserted ${createdItems.length} menu items`);
   console.log(`Inserted ${createdTables.length} tables`);
   console.log('Seeding finished');

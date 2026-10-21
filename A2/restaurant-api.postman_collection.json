@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Restaurant API (Green Fork)",
-    "description": "Assignment 2 \u2013 Muhammad Wasim (9513). Run the server with `npm run dev`, then send the requests from top to bottom. Change `baseUrl` in the collection Variables if needed.",
+    "description": "Assignment 2 \u2013 Muhammad Wasim (9513).\n1. Run the server: `npm run seed` then `npm run dev`.\n2. Run the 'Auth' folder first \u2013 the login requests save customerToken and managerToken automatically.\n3. Then run the other folders from top to bottom.\nChange `baseUrl` in the collection Variables if needed.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -23,7 +23,10 @@
                 "health"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -52,7 +55,10 @@
                 "abc"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -61,6 +67,456 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login as customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"customer@greenfork.pk\",\n  \"password\": \"customer123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "// Save the token so the next requests can use it",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('customerToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager@greenfork.pk\",\n  \"password\": \"manager123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "// Save the token so the next requests can use it",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('managerToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register new customer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "{{$timestamp}} makes a new email every time, so this request never hits the duplicate rule.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Student\",\n  \"email\": \"student{{$timestamp}}@greenfork.pk\",\n  \"password\": \"student123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FAIL \u2013 duplicate email (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ali Again\",\n  \"email\": \"customer@greenfork.pk\",\n  \"password\": \"customer123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FAIL \u2013 weak password (400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Weak\",\n  \"email\": \"weak@greenfork.pk\",\n  \"password\": \"abc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FAIL \u2013 wrong password (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager@greenfork.pk\",\n  \"password\": \"wrongpass1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Security (Q5)",
+      "item": [
+        {
+          "name": "FAIL \u2013 add dish with NO token (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mint Margarita\",\n  \"description\": \"Fresh mint, lemon and soda\",\n  \"price\": 450,\n  \"category\": \"Drinks\",\n  \"prepTime\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FAIL \u2013 add dish with CUSTOMER token (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mint Margarita\",\n  \"description\": \"Fresh mint, lemon and soda\",\n  \"price\": 450,\n  \"category\": \"Drinks\",\n  \"prepTime\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{customerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add dish with MANAGER token (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/menu",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "menu"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mint Margarita\",\n  \"description\": \"Fresh mint, lemon and soda\",\n  \"price\": 450,\n  \"category\": \"Drinks\",\n  \"prepTime\": 5\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+                  "// Save the new item's _id so the PUT / DELETE requests can use it",
+                  "if (pm.response.code === 201) pm.collectionVariables.set('menuId', pm.response.json()._id);"
                 ]
               }
             }
@@ -86,7 +542,10 @@
                 "menu"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -121,7 +580,10 @@
                 }
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -156,7 +618,10 @@
                 }
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -171,7 +636,7 @@
           ]
         },
         {
-          "name": "Create menu item",
+          "name": "Create menu item (manager)",
           "request": {
             "method": "POST",
             "header": [
@@ -199,6 +664,16 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "event": [
@@ -207,10 +682,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "pm.test('Status is 201', () => pm.response.to.have.status(201));",
                   "// Save the new item's _id so the PUT / DELETE requests can use it",
-                  "const data = pm.response.json();",
-                  "if (pm.response.code === 201) pm.collectionVariables.set('menuId', data._id);",
-                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));"
+                  "if (pm.response.code === 201) pm.collectionVariables.set('menuId', pm.response.json()._id);"
                 ]
               }
             }
@@ -232,7 +706,10 @@
                 "{{menuId}}"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -247,7 +724,7 @@
           ]
         },
         {
-          "name": "Update menu item (price + availability)",
+          "name": "Update menu item (manager)",
           "request": {
             "method": "PUT",
             "header": [
@@ -276,6 +753,16 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "event": [
@@ -291,7 +778,7 @@
           ]
         },
         {
-          "name": "Delete menu item",
+          "name": "Delete menu item (manager)",
           "request": {
             "method": "DELETE",
             "header": [],
@@ -306,7 +793,17 @@
                 "{{menuId}}"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -341,7 +838,10 @@
                 "abc"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -371,7 +871,10 @@
                 "64b000000000000000000000"
               ]
             },
-            "description": ""
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -414,6 +917,16 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "event": [
@@ -457,6 +970,16 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "event": [
@@ -500,6 +1023,16 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{managerToken}}",
+                  "type": "string"
+                }
+              ]
             }
           },
           "event": [
@@ -524,6 +1057,14 @@
     },
     {
       "key": "menuId",
+      "value": ""
+    },
+    {
+      "key": "customerToken",
+      "value": ""
+    },
+    {
+      "key": "managerToken",
       "value": ""
     }
   ]

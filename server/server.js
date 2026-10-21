@@ -4,6 +4,7 @@
 //     404 handler for unknown routes and a JSON error handler.
 // Q3: connects to MongoDB before the server starts listening.
 // Q4: menu API routes (/api/menu).
+// Q5: login/signup routes (/api/auth) and JWT_SECRET check.
 
 require('dotenv').config({ quiet: true }); // loads PORT, MONGO_URI ... from the .env file into process.env
 
@@ -11,6 +12,12 @@ const os = require('os');
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/db');
+
+// Q5: tokens cannot be created or checked without a secret – stop early with a clear message
+if (!process.env.JWT_SECRET) {
+  console.error('JWT_SECRET is missing. Add it to server/.env (see .env.example).');
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -24,6 +31,9 @@ app.use(express.json()); // read JSON request bodies into req.body
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
+
+// Q5: register and login
+app.use('/api/auth', require('./routes/authRoutes'));
 
 // Q4: every URL starting with /api/menu is handled by the menu routes file
 app.use('/api/menu', require('./routes/menuRoutes'));
